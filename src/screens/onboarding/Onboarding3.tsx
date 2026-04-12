@@ -12,9 +12,13 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Onboarding3'>;
 
 export function Onboarding3({ navigation }: Props) {
   const handleGetStarted = async () => {
-    await setOnboardingComplete();
-    // Navigate to Main — replace entire Onboarding stack
-    navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Main' }] });
+    try {
+      await setOnboardingComplete();
+    } catch (e) {
+      console.warn("Failed to set onboarding status", e);
+    }
+    // Navigate cleanly to Main, bubbling up to the Root navigator seamlessly
+    navigation.navigate('Main' as any);
   };
 
   return (
