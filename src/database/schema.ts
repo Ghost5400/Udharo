@@ -21,6 +21,7 @@ export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void>
       name TEXT NOT NULL,
       phone TEXT,
       photo_uri TEXT,
+      notes TEXT,
       net_balance REAL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -84,6 +85,13 @@ export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void>
     CREATE INDEX IF NOT EXISTS idx_reminders_status ON reminders(status);
     CREATE INDEX IF NOT EXISTS idx_people_not_deleted ON people(is_deleted);
   `);
+
+  // Simple migration to add notes if people table already exists without it
+  try {
+    await db.execAsync(`ALTER TABLE people ADD COLUMN notes TEXT;`);
+  } catch (e) {
+    // Column likely already exists
+  }
 }
 
 export async function closeDatabase(): Promise<void> {

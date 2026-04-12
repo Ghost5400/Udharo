@@ -1,9 +1,9 @@
-import { getDatabase } from './schema';
 import { AppSettings, AppLanguage, AppTheme } from '../types';
+import { getDatabase } from './schema';
 
 const DEFAULTS: AppSettings = {
   language: 'en',
-  theme: 'system',
+  theme: 'light',
   appLockEnabled: false,
   onboardingComplete: false,
 };
@@ -30,9 +30,7 @@ export async function getAppSettings(): Promise<AppSettings> {
   const rows = await db.getAllAsync<{ key: string; value: string }>(
     `SELECT key, value FROM app_settings`
   );
-
   const map = new Map(rows.map(r => [r.key, r.value]));
-
   return {
     language: (map.get('language') as AppLanguage) ?? DEFAULTS.language,
     theme: (map.get('theme') as AppTheme) ?? DEFAULTS.theme,
@@ -40,6 +38,7 @@ export async function getAppSettings(): Promise<AppSettings> {
     appLockType: (map.get('appLockType') as any) ?? undefined,
     onboardingComplete: map.get('onboardingComplete') === 'true',
     lastBackupAt: map.get('lastBackupAt') ?? undefined,
+    appPin: map.get('appPin') ?? undefined,
   };
 }
 
@@ -58,6 +57,23 @@ export async function setTheme(theme: AppTheme): Promise<void> {
 export async function setAppLock(enabled: boolean, type?: 'pin' | 'biometric'): Promise<void> {
   await setSetting('appLockEnabled', String(enabled));
   if (type) await setSetting('appLockType', type);
+}
+
+export async function setPin(pin: string): Promise<void> {
+  // Simple storage — in production use expo-secure-store
+  await setSetting('appPin', pin);
+  await setSetting('appLockEnabled', 'true');
+  await setSetting('appLockType', 'pin');
+}
+
+export async function clearPin(): Promise<void> {
+  await setSetting('appPin', '');
+  await setSetting('appLockEnabled', 'false');
+}
+
+export async function verifyPin(pin: string): Promise<boolean> {
+  const stored = await getSetting('appPin');
+  return stored === pin;
 }
 
 export async function setLastBackupAt(isoDate: string): Promise<void> {

@@ -1,28 +1,34 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, TextInput, RefreshControl, Image,
+  StatusBar, TextInput, RefreshControl, Image, Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../types';
-import { Colors } from '../../constants/colors';
+import { Colors, DarkColors, ThemeColors } from '../../constants/colors';
 import { BorderRadius, Shadow, Spacing } from '../../constants/theme';
 import { usePeopleStore } from '../../store';
 import { PersonCard } from '../../components/PersonCard';
 import { formatCurrency, formatAmount } from '../../utils/helpers';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
+
+const LOGO_WHITE_BG = require('../../../assets/UDHARO LOGO (WHITE BG).png');
+const LOGO_BLACK_BG = require('../../../assets/UDHARO LOGO (BLACK BG).png');
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
+
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 68;
 
 export function HomeScreen({ navigation }: Props) {
   const { people, globalBalance, isLoading, loadPeople } = usePeopleStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const { isDark, t } = useTheme();
+  const C = isDark ? DarkColors : Colors;
 
-  useEffect(() => {
-    loadPeople();
-  }, []);
+  useEffect(() => { loadPeople(); }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -31,47 +37,58 @@ export function HomeScreen({ navigation }: Props) {
   }, []);
 
   const filteredPeople = searchQuery
-    ? people.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? people.filter(p => {
+        const q = searchQuery.toLowerCase();
+        const matchesName = p.name.toLowerCase().includes(q);
+        const matchesPhone = p.phone?.toLowerCase().includes(q);
+        const matchesNotes = p.notes?.toLowerCase().includes(q);
+        const matchesBalance = Math.abs(p.netBalance).toString().includes(q);
+        return matchesName || matchesPhone || matchesNotes || matchesBalance;
+      })
     : people;
 
   const netBalance = globalBalance?.netBalance ?? 0;
   const isPositive = netBalance >= 0;
 
+  const styles = makeStyles(C);
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.surfaceContainerLowest} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.surfaceContainerLowest} />
 
       {/* ── TopAppBar ── */}
       <View style={styles.topBar}>
         {showSearch ? (
           <View style={styles.searchBox}>
-            <MaterialIcons name="search" size={20} color={Colors.onSurfaceVariant} />
+            <MaterialIcons name="search" size={20} color={C.onSurfaceVariant} />
             <TextInput
-              style={styles.searchInput}
-              placeholder="Search people..."
-              placeholderTextColor={Colors.onSurfaceVariant}
+              style={[styles.searchInput, { color: C.onSurface }]}
+              placeholder={t.searchPeople}
+              placeholderTextColor={C.onSurfaceVariant}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
             />
             <TouchableOpacity onPress={() => { setShowSearch(false); setSearchQuery(''); }}>
-              <MaterialIcons name="close" size={20} color={Colors.onSurfaceVariant} />
+              <MaterialIcons name="close" size={20} color={C.onSurfaceVariant} />
             </TouchableOpacity>
           </View>
         ) : (
           <>
             <View style={styles.brand}>
-              <View style={styles.logoChip}>
-                <Text style={styles.logoText}>U</Text>
-              </View>
-              <Text style={styles.brandName}>Udharo</Text>
+              <Image
+                source={isDark ? LOGO_BLACK_BG : LOGO_WHITE_BG}
+                style={styles.brandLogo}
+                resizeMode="contain"
+              />
+              <Text style={[styles.brandName, { color: C.primary }]}>Udharo</Text>
             </View>
             <View style={styles.topActions}>
-              <TouchableOpacity style={styles.iconBtn} onPress={() => setShowSearch(true)}>
-                <MaterialIcons name="search" size={22} color={Colors.onSurfaceVariant} />
+              <TouchableOpacity style={[styles.iconBtn, { backgroundColor: C.surfaceContainerLow }]} onPress={() => setShowSearch(true)}>
+                <MaterialIcons name="search" size={22} color={C.onSurfaceVariant} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.avatar} onPress={() => {}}>
-                <Text style={styles.avatarText}>U</Text>
+              <TouchableOpacity style={[styles.notifBtn, { backgroundColor: C.surfaceContainerLow }]} onPress={() => {}}>
+                <MaterialIcons name="notifications-none" size={22} color={C.onSurfaceVariant} />
               </TouchableOpacity>
             </View>
           </>
@@ -79,50 +96,47 @@ export function HomeScreen({ navigation }: Props) {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 24 }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} colors={[C.primary]} />}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Hero Balance Card ── */}
-        <View style={styles.balanceCard}>
-          {/* Watermark */}
+        <View style={[styles.balanceCard, { backgroundColor: C.surfaceContainerLowest }]}>
           <View style={styles.watermark} pointerEvents="none">
-            <Text style={styles.watermarkText}>U</Text>
+            <Text style={[styles.watermarkText, { color: C.primary }]}>₹</Text>
           </View>
 
-          <Text style={styles.balanceLabel}>Net Balance</Text>
+          <Text style={[styles.balanceLabel, { color: C.onSurfaceVariant }]}>{t.netBalance}</Text>
           <View style={styles.balanceRow}>
-            <Text style={[styles.balanceAmount, { color: isPositive ? Colors.received : Colors.given }]}>
+            <Text style={[styles.balanceAmount, { color: isPositive ? C.received : C.given }]}>
               {formatCurrency(Math.abs(netBalance))}
             </Text>
-            <Text style={{ fontSize: 22, color: isPositive ? Colors.received : Colors.given }}>
-              {isPositive ? '↑' : '↓'}
-            </Text>
+            <View style={[styles.balanceBadge, { backgroundColor: isPositive ? `${C.received}18` : `${C.given}18` }]}>
+              <MaterialIcons name={isPositive ? 'trending-up' : 'trending-down'} size={18} color={isPositive ? C.received : C.given} />
+            </View>
           </View>
 
           <View style={styles.balanceSplit}>
-            {/* Given */}
-            <View style={styles.balanceSplitItem}>
-              <Text style={styles.splitLabel}>Total Given</Text>
-              <Text style={[styles.splitAmount, { color: Colors.given }]}>
+            <View style={[styles.balanceSplitItem, { backgroundColor: `${C.given}10` }]}>
+              <View style={styles.splitTopRow}>
+                <MaterialIcons name="north-east" size={14} color={C.given} />
+                <Text style={[styles.splitLabel, { color: C.given }]}>{t.totalGiven}</Text>
+              </View>
+              <Text style={[styles.splitAmount, { color: C.given }]}>
                 {formatAmount(globalBalance?.totalGiven ?? 0)}
               </Text>
-              <View style={styles.splitMeta}>
-                <MaterialIcons name="north-east" size={12} color={Colors.given} />
-                <Text style={[styles.splitMetaText, { color: Colors.given }]}>Pending Recovery</Text>
-              </View>
+              <Text style={[styles.splitMeta, { color: C.given }]}>{t.pendingRecovery}</Text>
             </View>
 
-            {/* Received */}
-            <View style={styles.balanceSplitItem}>
-              <Text style={styles.splitLabel}>Total Received</Text>
-              <Text style={[styles.splitAmount, { color: Colors.received }]}>
+            <View style={[styles.balanceSplitItem, { backgroundColor: `${C.received}10` }]}>
+              <View style={styles.splitTopRow}>
+                <MaterialIcons name="south-west" size={14} color={C.received} />
+                <Text style={[styles.splitLabel, { color: C.received }]}>{t.totalReceived}</Text>
+              </View>
+              <Text style={[styles.splitAmount, { color: C.received }]}>
                 {formatAmount(globalBalance?.totalReceived ?? 0)}
               </Text>
-              <View style={styles.splitMeta}>
-                <MaterialIcons name="south-west" size={12} color={Colors.received} />
-                <Text style={[styles.splitMetaText, { color: Colors.received }]}>Total Inflow</Text>
-              </View>
+              <Text style={[styles.splitMeta, { color: C.received }]}>{t.totalInflow}</Text>
             </View>
           </View>
         </View>
@@ -130,14 +144,14 @@ export function HomeScreen({ navigation }: Props) {
         {/* ── People Section ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>People</Text>
+            <Text style={[styles.sectionTitle, { color: C.onSurface }]}>{t.people}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('AllPeople')}>
-              <Text style={styles.viewAll}>View All</Text>
+              <Text style={[styles.viewAll, { color: C.primary }]}>{t.viewAll}</Text>
             </TouchableOpacity>
           </View>
 
           {filteredPeople.length === 0 ? (
-            <EmptyPeople onAdd={() => navigation.navigate('AddPerson', {})} />
+            <EmptyPeople onAdd={() => navigation.navigate('AddPerson', {})} t={t} C={C} />
           ) : (
             <View style={styles.peopleList}>
               {filteredPeople.slice(0, 8).map(person => (
@@ -154,134 +168,106 @@ export function HomeScreen({ navigation }: Props) {
 
       {/* ── FAB ── */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: C.primary, bottom: TAB_BAR_HEIGHT + 16 }]}
         onPress={() => navigation.navigate('AddPerson', {})}
         activeOpacity={0.85}
       >
-        <MaterialIcons name="add" size={32} color={Colors.onPrimary} />
+        <MaterialIcons name="person-add" size={26} color={C.onPrimary} />
       </TouchableOpacity>
     </View>
   );
 }
 
-function EmptyPeople({ onAdd }: { onAdd: () => void }) {
+function EmptyPeople({ onAdd, t, C }: { onAdd: () => void; t: any; C: any }) {
   return (
-    <View style={styles.emptyState}>
-      <Text style={styles.emptyEmoji}>👥</Text>
-      <Text style={styles.emptyTitle}>No people yet</Text>
-      <Text style={styles.emptyBody}>Add your first person to start tracking money</Text>
-      <TouchableOpacity style={styles.emptyBtn} onPress={onAdd}>
-        <MaterialIcons name="person-add" size={18} color={Colors.onPrimary} />
-        <Text style={styles.emptyBtnText}>Add Person</Text>
+    <View style={emptyStyles.emptyState}>
+      <Text style={emptyStyles.emptyEmoji}>👥</Text>
+      <Text style={[emptyStyles.emptyTitle, { color: C.onSurface }]}>{t.noPeopleYet}</Text>
+      <Text style={[emptyStyles.emptyBody, { color: C.onSurfaceVariant }]}>{t.noPeopleBody}</Text>
+      <TouchableOpacity style={[emptyStyles.emptyBtn, { backgroundColor: C.primary }]} onPress={onAdd}>
+        <MaterialIcons name="person-add" size={18} color={C.onPrimary} />
+        <Text style={[emptyStyles.emptyBtnText, { color: C.onPrimary }]}>{t.addPerson}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.surface },
-
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 52,
-    paddingBottom: 16,
-    backgroundColor: Colors.surfaceContainerLowest,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logoChip: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
-  },
-  logoText: { fontSize: 18, fontWeight: '900', color: Colors.white },
-  brandName: { fontSize: 20, fontWeight: '800', color: Colors.primary },
-  topActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.surfaceContainerLow,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.primaryContainer,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: `${Colors.primary}20`,
-  },
-  avatarText: { fontSize: 16, fontWeight: '800', color: Colors.onPrimary },
-  searchBox: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surfaceContainerLow,
-    borderRadius: BorderRadius.full, paddingHorizontal: 16, height: 44, gap: 10,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: Colors.onSurface },
-
-  scroll: { paddingBottom: 120, paddingTop: 8 },
-
-  balanceCard: {
-    margin: 20,
-    marginTop: 16,
-    backgroundColor: Colors.surfaceContainerLowest,
-    borderRadius: BorderRadius['3xl'],
-    padding: 28,
-    overflow: 'hidden',
-    position: 'relative',
-    ...Shadow.lg,
-  },
-  watermark: { position: 'absolute', right: -30, bottom: -30, opacity: 0.03 },
-  watermarkText: { fontSize: 200, fontWeight: '900', color: Colors.primary },
-  balanceLabel: {
-    fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant,
-    textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8,
-  },
-  balanceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 28 },
-  balanceAmount: { fontSize: 44, fontWeight: '800', letterSpacing: -1 },
-  balanceSplit: { flexDirection: 'row', gap: 12 },
-  balanceSplitItem: {
-    flex: 1, backgroundColor: Colors.surfaceContainerLow,
-    borderRadius: BorderRadius.xl, padding: 16, gap: 4,
-  },
-  splitLabel: {
-    fontSize: 10, fontWeight: '700', color: Colors.onSurfaceVariant,
-    textTransform: 'uppercase', letterSpacing: 0.8,
-  },
-  splitAmount: { fontSize: 20, fontWeight: '800' },
-  splitMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  splitMetaText: { fontSize: 10, fontWeight: '500' },
-
-  section: { paddingHorizontal: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  sectionTitle: { fontSize: 22, fontWeight: '800', color: Colors.onSurface },
-  viewAll: { fontSize: 14, fontWeight: '700', color: Colors.primary },
-  peopleList: { gap: 12 },
-
-  fab: {
-    position: 'absolute',
-    right: 24,
-    bottom: 96,
-    width: 62,
-    height: 62,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.primary,
-  },
-
+const emptyStyles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   emptyEmoji: { fontSize: 56 },
-  emptyTitle: { fontSize: 20, fontWeight: '800', color: Colors.onSurface },
-  emptyBody: { fontSize: 14, color: Colors.onSurfaceVariant, textAlign: 'center', lineHeight: 22 },
+  emptyTitle: { fontSize: 20, fontWeight: '800' },
+  emptyBody: { fontSize: 14, textAlign: 'center', lineHeight: 22 },
   emptyBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: Colors.primary, borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.full,
     paddingHorizontal: 24, paddingVertical: 12, marginTop: 8,
   },
-  emptyBtnText: { fontSize: 15, fontWeight: '700', color: Colors.onPrimary },
+  emptyBtnText: { fontSize: 15, fontWeight: '700' },
 });
+
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.surface },
+    topBar: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14,
+      backgroundColor: C.surfaceContainerLowest,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05, shadowRadius: 6, elevation: 3,
+    },
+    brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    brandLogo: { width: 34, height: 34, borderRadius: 10 },
+    brandName: { fontSize: 20, fontWeight: '900', letterSpacing: 0.5 },
+    topActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    notifBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    searchBox: {
+      flex: 1, flexDirection: 'row', alignItems: 'center',
+      backgroundColor: C.surfaceContainerLow,
+      borderRadius: BorderRadius.full, paddingHorizontal: 16, height: 44, gap: 10,
+    },
+    searchInput: { flex: 1, fontSize: 15, fontWeight: '500' },
+
+    scroll: { paddingTop: 8 },
+
+    balanceCard: {
+      margin: 20, marginTop: 16,
+      borderRadius: BorderRadius['3xl'],
+      padding: 24, overflow: 'hidden', position: 'relative',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.07, shadowRadius: 20, elevation: 8,
+    },
+    watermark: { position: 'absolute', right: -10, top: -10, opacity: 0.04 },
+    watermarkText: { fontSize: 160, fontWeight: '900' },
+    balanceLabel: {
+      fontSize: 11, fontWeight: '700',
+      textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6,
+    },
+    balanceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
+    balanceAmount: { fontSize: 42, fontWeight: '900', letterSpacing: -1.5 },
+    balanceBadge: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+    balanceSplit: { flexDirection: 'row', gap: 12 },
+    balanceSplitItem: { flex: 1, borderRadius: BorderRadius.xl, padding: 14, gap: 4 },
+    splitTopRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    splitLabel: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+    splitAmount: { fontSize: 20, fontWeight: '900', marginTop: 4 },
+    splitMeta: { fontSize: 10, fontWeight: '500', opacity: 0.8 },
+
+    section: { paddingHorizontal: 20 },
+    sectionHeader: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
+    },
+    sectionTitle: { fontSize: 22, fontWeight: '800' },
+    viewAll: { fontSize: 14, fontWeight: '700' },
+    peopleList: { gap: 12 },
+
+    fab: {
+      position: 'absolute', right: 24,
+      width: 58, height: 58, borderRadius: 18,
+      alignItems: 'center', justifyContent: 'center',
+      shadowColor: Colors.primary,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.35, shadowRadius: 16, elevation: 10,
+    },
+  });
+}

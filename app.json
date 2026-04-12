@@ -62,7 +62,8 @@
         }
       ],
       "expo-av",
-      "expo-local-authentication"
+      "expo-local-authentication",
+      "expo-sharing"
     ],
     "extra": {
       "eas": {

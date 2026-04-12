@@ -16,6 +16,7 @@ interface PeopleState {
   loadPeople: () => Promise<void>;
   addPerson: (input: AddPersonInput) => Promise<Person>;
   updatePerson: (id: string, input: Partial<AddPersonInput>) => Promise<Person>;
+  updatePersonNotes: (id: string, notes: string) => Promise<void>;
   deletePerson: (id: string) => Promise<void>;
   searchPeople: (query: string) => Promise<Person[]>;
   refreshBalance: () => Promise<void>;
@@ -53,6 +54,13 @@ export const usePeopleStore = create<PeopleState>((set, get) => ({
       people: state.people.map(p => (p.id === id ? updated : p)),
     }));
     return updated;
+  },
+
+  updatePersonNotes: async (id, notes) => {
+    await PeopleRepo.updatePersonNotes(id, notes);
+    set(state => ({
+      people: state.people.map(p => (p.id === id ? { ...p, notes, updatedAt: new Date().toISOString() } : p)),
+    }));
   },
 
   deletePerson: async (id) => {

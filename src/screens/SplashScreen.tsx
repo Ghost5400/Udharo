@@ -1,40 +1,42 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Animated, StatusBar, Image } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-import { Colors } from '../constants/colors';
+import { Colors, DarkColors } from '../constants/colors';
+import { Shadow } from '../constants/theme';
 import { getAppSettings } from '../database/settingsRepository';
 import { getDatabase } from '../database/schema';
+import { useTheme } from '../context/ThemeContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
+
+const LOGO_WITH_TEXT = require('../../assets/UDHARO LOGO (WITH TEXT).png');
 
 export function SplashScreen({ navigation }: Props) {
   const scaleAnim = useRef(new Animated.Value(0.6)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const { isDark } = useTheme();
+  const C = isDark ? DarkColors : Colors;
 
   useEffect(() => {
-    // Animate logo in
     Animated.parallel([
       Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 100 }),
       Animated.timing(opacityAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
     ]).start();
 
-    // Initialize DB + navigate
     const init = async () => {
       try {
-        await getDatabase(); // triggers schema init
-        await new Promise(res => setTimeout(res, 2000)); // 2s splash
-
+        await getDatabase();
+        await new Promise(res => setTimeout(res, 2200));
         const settings = await getAppSettings();
         if (!settings.onboardingComplete) {
           navigation.replace('Onboarding');
         } else if (settings.appLockEnabled) {
-          navigation.replace('AppLock');
+          navigation.replace('AppLock', { mode: 'verify' });
         } else {
           navigation.replace('Main');
         }
       } catch (e) {
-        console.error('Init error:', e);
         navigation.replace('Onboarding');
       }
     };
@@ -43,96 +45,58 @@ export function SplashScreen({ navigation }: Props) {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.surfaceContainerLowest} />
+    <View style={[styles.container, { backgroundColor: isDark ? C.surface : '#ffffff' }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? C.surface : '#ffffff'} />
 
-      {/* Background radial gradient effect */}
-      <View style={styles.bgGlow} />
+      {/* Glow orb */}
+      <View style={[styles.bgGlow, { backgroundColor: `${C.primary}0a` }]} />
+      <View style={[styles.bgGlow2, { backgroundColor: `${C.primary}06` }]} />
 
-      {/* Logo Card */}
-      <Animated.View
-        style={[styles.logoCard, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}
-      >
-        <Text style={styles.logoText}>U</Text>
+      {/* Logo with text*/}
+      <Animated.View style={[styles.logoWrap, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
+        <Image
+          source={LOGO_WITH_TEXT}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </Animated.View>
 
-      {/* App name (screen reader only visible) */}
-      <Animated.View style={[styles.brandRow, { opacity: opacityAnim }]}>
-        <Text style={styles.brandName}>Udharo</Text>
-        <Text style={styles.brandTagline}>Smart Ledger</Text>
+      {/* Tagline */}
+      <Animated.View style={[styles.taglineRow, { opacity: opacityAnim }]}>
+        <Text style={[styles.tagline, { color: C.onSurfaceVariant }]}>Smart Money Ledger</Text>
       </Animated.View>
 
-      {/* Watermark */}
-      <View style={styles.watermark}>
-        <Text style={styles.watermarkText}>U</Text>
-      </View>
+      {/* Made in India */}
+      <Animated.View style={[styles.footer, { opacity: opacityAnim }]}>
+        <Text style={[styles.footerText, { color: C.onSurfaceVariant }]}>MADE WITH ❤️ IN INDIA</Text>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: Colors.surfaceContainerLowest,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1, alignItems: 'center', justifyContent: 'center',
   },
   bgGlow: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: `${Colors.primary}08`,
-    top: '30%',
-    alignSelf: 'center',
+    position: 'absolute', width: 320, height: 320, borderRadius: 160,
+    top: '25%', alignSelf: 'center',
   },
-  logoCard: {
-    width: 120,
-    height: 120,
-    borderRadius: 36,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#191c1e',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 10,
-    marginBottom: 24,
+  bgGlow2: {
+    position: 'absolute', width: 500, height: 500, borderRadius: 250,
+    bottom: '10%', right: -100,
   },
-  logoText: {
-    fontSize: 64,
-    fontWeight: '900',
-    color: Colors.primary,
-    lineHeight: 72,
+  logoWrap: { alignItems: 'center', marginBottom: 16 },
+  logoImage: { width: 220, height: 220 },
+  taglineRow: { alignItems: 'center' },
+  tagline: {
+    fontSize: 13, fontWeight: '600',
+    letterSpacing: 2.5, textTransform: 'uppercase',
   },
-  brandRow: {
-    alignItems: 'center',
-    gap: 4,
+  footer: {
+    position: 'absolute', bottom: 48, alignSelf: 'center',
   },
-  brandName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.5,
-  },
-  brandTagline: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.onSurfaceVariant,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  watermark: {
-    position: 'absolute',
-    bottom: -40,
-    right: -30,
-    opacity: 0.03,
-    pointerEvents: 'none',
-  },
-  watermarkText: {
-    fontSize: 240,
-    fontWeight: '900',
-    color: Colors.primary,
+  footerText: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 1.5,
   },
 });

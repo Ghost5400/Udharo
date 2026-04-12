@@ -1,4 +1,4 @@
-// ─── Core Entity Types ───────────────────────────────────────────────────────
+// ─── Core Entity Types ────────────────────────────────────────────────────────
 
 export type TransactionType = 'GIVE' | 'RECEIVE';
 export type TransactionStatus = 'PENDING' | 'PARTIAL' | 'SETTLED';
@@ -10,7 +10,8 @@ export interface Person {
   name: string;
   phone?: string;
   photoUri?: string;
-  netBalance: number; // negative = they owe you, positive = you owe them
+  notes?: string;
+  netBalance: number;
   createdAt: string;
   updatedAt: string;
   isDeleted: boolean;
@@ -20,11 +21,12 @@ export interface Transaction {
   id: string;
   personId: string;
   type: TransactionType;
-  amount: number;           // always positive
+  amount: number;
   note?: string;
-  date: string;             // ISO 8601
+  date: string;
   status: TransactionStatus;
   settledAmount: number;
+  tag?: string;
   createdAt: string;
   updatedAt: string;
   isDeleted: boolean;
@@ -44,7 +46,7 @@ export interface Reminder {
   id: string;
   personId: string;
   transactionId?: string;
-  remindAt: string;         // ISO 8601
+  remindAt: string;
   message?: string;
   status: ReminderStatus;
   notificationId?: string;
@@ -70,8 +72,6 @@ export interface GlobalBalance {
   pendingCount: number;
 }
 
-// ─── Transaction with Person ─────────────────────────────────────────────────
-
 export interface TransactionWithPerson extends Transaction {
   person: Person;
 }
@@ -82,11 +82,9 @@ export interface PersonWithTransactions extends Person {
   reminders?: Reminder[];
 }
 
-// ─── Grouped Transaction (for history UI) ───────────────────────────────────
-
 export interface TransactionGroup {
-  date: string;             // e.g. "20 October 2023"
-  dateKey: string;          // e.g. "2023-10-20"
+  date: string;
+  dateKey: string;
   transactions: (Transaction & { attachments?: Attachment[] })[];
 }
 
@@ -104,6 +102,7 @@ export interface AddTransactionInput {
   amount: number;
   note?: string;
   date: string;
+  tag?: string;
   attachments?: AttachmentInput[];
 }
 
@@ -123,7 +122,10 @@ export interface AddReminderInput {
 
 // ─── App Settings ────────────────────────────────────────────────────────────
 
-export type AppLanguage = 'en' | 'hi' | 'mr' | 'ta' | 'te' | 'bn';
+export type AppLanguage =
+  | 'en' | 'hi' | 'kn' | 'mr' | 'ta' | 'te'
+  | 'bn' | 'gu' | 'pa' | 'ml' | 'or' | 'ur' | 'as';
+
 export type AppTheme = 'light' | 'dark' | 'system';
 
 export interface AppSettings {
@@ -131,16 +133,24 @@ export interface AppSettings {
   theme: AppTheme;
   appLockEnabled: boolean;
   appLockType?: 'pin' | 'biometric';
+  appPin?: string;
   onboardingComplete: boolean;
   lastBackupAt?: string;
 }
+
+// ─── Transaction Tags ────────────────────────────────────────────────────────
+export const TRANSACTION_TAGS = [
+  'Food', 'Rent', 'Travel', 'Groceries', 'Medical',
+  'Utilities', 'Entertainment', 'Shopping', 'Education', 'Other',
+] as const;
+export type TransactionTag = typeof TRANSACTION_TAGS[number];
 
 // ─── Navigation Types ────────────────────────────────────────────────────────
 
 export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
-  AppLock: undefined;
+  AppLock: { mode: 'setup' | 'verify' | 'change' };
   Main: undefined;
 };
 
@@ -169,7 +179,7 @@ export type HomeStackParamList = {
 export type SettingsStackParamList = {
   Settings: undefined;
   Language: undefined;
-  AppLockSetup: undefined;
+  AppLockSetup: { mode?: 'setup' | 'change' };
   BackupRestore: undefined;
   About: undefined;
 };

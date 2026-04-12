@@ -10,6 +10,7 @@ function rowToPerson(row: any): Person {
     name: row.name,
     phone: row.phone ?? undefined,
     photoUri: row.photo_uri ?? undefined,
+    notes: row.notes ?? undefined,
     netBalance: row.net_balance ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -53,12 +54,21 @@ export async function addPerson(input: AddPersonInput): Promise<Person> {
   const now = new Date().toISOString();
 
   await db.runAsync(
-    `INSERT INTO people (id, name, phone, photo_uri, net_balance, created_at, updated_at, is_deleted)
-     VALUES (?, ?, ?, ?, 0, ?, ?, 0)`,
+    `INSERT INTO people (id, name, phone, photo_uri, notes, net_balance, created_at, updated_at, is_deleted)
+     VALUES (?, ?, ?, ?, NULL, 0, ?, ?, 0)`,
     [id, input.name.trim(), input.phone ?? null, input.photoUri ?? null, now, now]
   );
 
   return (await getPersonById(id))!;
+}
+
+// ─── Update Person Notes ─────────────────────────────────────────────────────
+export async function updatePersonNotes(id: string, notes: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE people SET notes = ?, updated_at = ? WHERE id = ?`,
+    [notes, new Date().toISOString(), id]
+  );
 }
 
 // ─── Update Person ───────────────────────────────────────────────────────────

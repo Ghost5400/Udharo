@@ -1,39 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, StatusBar, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Platform,
 } from 'react-native';
-import { MainTabParamList } from '../../types';
-import { Colors } from '../../constants/colors';
+import { MainTabParamList, HomeStackParamList } from '../../types';
+import { Colors, DarkColors } from '../../constants/colors';
 import { BorderRadius, Shadow } from '../../constants/theme';
-import { getTopPendingPeople, getRecentTransactions } from '../../database/transactionRepository';
+import {
+  getTopPendingPeople, getRecentTransactions,
+} from '../../database/transactionRepository';
 import { getGlobalBalance } from '../../database/peopleRepository';
-import { formatCurrency, formatAmount, getInitials, getAvatarColor } from '../../utils/helpers';
+import {
+  formatCurrency, formatAmount, getInitials, getAvatarColor, formatDate,
+} from '../../utils/helpers';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { HomeStackParamList } from '../../types';
+import { useTheme } from '../../context/ThemeContext';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { Image, Alert } from 'react-native';
+
+const LOGO_WHITE_BG = require('../../../assets/UDHARO LOGO (WHITE BG).png');
+const LOGO_BLACK_BG = require('../../../assets/UDHARO LOGO (BLACK BG).png');
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'InsightsTab'>,
   NativeStackScreenProps<HomeStackParamList>
 >;
 
-interface InsightsData {
-  totalGiven: number;
-  totalReceived: number;
-  netBalance: number;
-  pending: number;
-  topPending: { personId: string; name: string; netBalance: number }[];
-  chartBars: number[];
-}
+const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 68;
 
 export function InsightsScreen({ navigation }: Props) {
-  const [data, setData] = useState<InsightsData | null>(null);
+  const { isDark, t } = useTheme();
+  const C = isDark ? DarkColors : Colors;
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const [data, setData] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     const [balance, topPending, recent] = await Promise.all([
@@ -44,13 +49,26 @@ export function InsightsScreen({ navigation }: Props) {
 
     // Build chart bars from last 6 days
     const dayMap = new Map<string, number>();
-    for (const t of recent) {
-      const day = t.date.substring(0, 10);
-      dayMap.set(day, (dayMap.get(day) ?? 0) + t.amount);
+    for (const tx of recent) {
+      const day = tx.date.substring(0, 10);
+      dayMap.set(day, (dayMap.get(day) ?? 0) + tx.amount);
     }
     const sorted = [...dayMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-6);
     const max = Math.max(...sorted.map(s => s[1]), 1);
-    const chartBars = sorted.map(s => s[1] / max);
+    const chartBars = sorted.map(s => ({ val: s[1] / max, date: s[0] }));
+
+    // Settlement rate (settled / total transactions from recent)
+    const totalTx = recent.length;
+    const settledTx = recent.filter(tx => tx.status === 'SETTLED').length;
+    const settlementRate = totalTx > 0 ? Math.round((settledTx / totalTx) * 100) : 0;
+
+    // Debt health score (0-100)
+    const given = balance.totalGiven;
+    const received = balance.totalReceived;
+    const total = given + received;
+    const healthScore = total > 0
+      ? Math.min(100, Math.round((received / total) * 100))
+      : 100;
 
     setData({
       totalGiven: balance.totalGiven,
@@ -58,87 +76,163 @@ export function InsightsScreen({ navigation }: Props) {
       netBalance: balance.netBalance,
       pending: Math.abs(balance.totalGiven - balance.totalReceived),
       topPending,
-      chartBars: chartBars.length > 0 ? chartBars : [0.4, 0.65, 0.3, 0.9, 0.55, 0.45],
+      chartBars: chartBars.length > 0 ? chartBars : [0.4, 0.65, 0.3, 0.9, 0.55, 0.45].map((v, i) => ({ val: v, date: '' })),
+      settlementRate,
+      healthScore,
+      recentTxns: recent,
     });
   };
 
-  if (!data) return <View style={styles.container} />;
+  const handleExportReport = async () => {
+    if (!data?.recentTxns) return;
+    setExporting(true);
+    try {
+      const month = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      let text = `Udharo Monthly Report - ${month}\n`;
+      text += `Total Given: ${formatCurrency(data.totalGiven)}\n`;
+      text += `Total Received: ${formatCurrency(data.totalReceived)}\n`;
+      text += `Pending Balance: ${formatCurrency(data.pending)}\n`;
+      text += `Settlement Rate: ${data.settlementRate}%\n\n`;
+      text += `Recent Transactions:\n`;
+      for (const tx of data.recentTxns) {
+        text += `${tx.date} | ${tx.type} | ${formatCurrency(tx.amount)} | ${tx.status}\n`;
+      }
+
+      const docDir: string = (FileSystem as any).documentDirectory ?? '';
+      const fileUri = `${docDir}udharo_report_${Date.now()}.txt`;
+      await (FileSystem as any).writeAsStringAsync(fileUri, text);
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, { dialogTitle: 'Share Monthly Report' });
+      }
+    } catch (e: any) {
+      Alert.alert('Export failed', e.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const healthLabel = (score: number) => {
+    if (score >= 80) return { label: t.excellent, color: C.received };
+    if (score >= 60) return { label: t.good, color: '#4caf50' };
+    if (score >= 40) return { label: t.fair, color: '#ff9800' };
+    return { label: t.needsAttention, color: C.given };
+  };
+
+  if (!data) return <View style={{ flex: 1, backgroundColor: C.surface }} />;
+
+  const health = healthLabel(data.healthScore);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.surfaceContainerLowest} />
+    <View style={{ flex: 1, backgroundColor: C.surface }}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.surfaceContainerLowest} />
 
       {/* ── Header ── */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { backgroundColor: C.surfaceContainerLowest }]}>
         <View style={styles.brand}>
-          <View style={styles.logoChip}><Text style={styles.logoText}>U</Text></View>
-          <Text style={styles.brandName}>Udharo</Text>
+          <Image
+            source={isDark ? LOGO_BLACK_BG : LOGO_WHITE_BG}
+            style={styles.brandLogo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.brandName, { color: C.primary }]}>Udharo</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity
+            style={[styles.refreshBtn, { backgroundColor: C.surfaceContainerLow }]}
+            onPress={handleExportReport}
+            disabled={exporting}
+          >
+            <MaterialIcons name="ios-share" size={20} color={C.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.refreshBtn, { backgroundColor: C.surfaceContainerLow }]}
+            onPress={loadData}
+          >
+            <MaterialIcons name="refresh" size={20} color={C.onSurfaceVariant} />
+          </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 24 }]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Hero */}
         <View style={styles.hero}>
-          <Text style={styles.heroSub}>Financial Health</Text>
-          <Text style={styles.heroTitle}>Insights</Text>
+          <Text style={[styles.heroSub, { color: C.onSurfaceVariant }]}>{t.financialHealth}</Text>
+          <Text style={[styles.heroTitle, { color: C.onSurface }]}>{t.insights}</Text>
         </View>
 
         {/* ── Bento Metrics ── */}
         <View style={styles.bento}>
-          {/* Total Received — large */}
-          <View style={[styles.bentoCard, styles.bentoLarge]}>
-            <View style={styles.bentoIconBox}>
-              <MaterialIcons name="south-west" size={22} color={Colors.received} />
+          <View style={[styles.bentoCard, styles.bentoLarge, { backgroundColor: C.surfaceContainerLowest }]}>
+            <View style={[styles.bentoIconBox, { backgroundColor: `${C.received}15` }]}>
+              <MaterialIcons name="south-west" size={22} color={C.received} />
             </View>
-            <Text style={styles.bentoLabel}>Total Received</Text>
-            <Text style={styles.bentoSpacer} />
-            <Text style={[styles.bentoValue, { color: Colors.received }]}>
-              {formatAmount(data.totalReceived)}
-            </Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '75%', backgroundColor: Colors.received }]} />
+            <Text style={[styles.bentoLabel, { color: C.onSurfaceVariant }]}>{t.totalReceived}</Text>
+            <Text style={[styles.bentoValue, { color: C.received }]}>{formatAmount(data.totalReceived)}</Text>
+            <View style={[styles.progressBar, { backgroundColor: C.surfaceContainerHigh }]}>
+              <View style={[styles.progressFill, { width: '72%', backgroundColor: C.received }]} />
             </View>
           </View>
 
-          {/* Right column */}
           <View style={styles.bentoRight}>
-            {/* Total Given */}
-            <View style={[styles.bentoCard, styles.bentoSmall]}>
+            <View style={[styles.bentoCard, styles.bentoSmall, { backgroundColor: C.surfaceContainerLowest }]}>
               <View style={styles.bentoRow}>
-                <MaterialIcons name="north-east" size={18} color={Colors.given} />
-                <Text style={styles.bentoSmallLabel}>Total Given</Text>
+                <MaterialIcons name="north-east" size={16} color={C.given} />
+                <Text style={[styles.bentoSmallLabel, { color: C.onSurfaceVariant }]}>{t.totalGiven}</Text>
               </View>
-              <Text style={[styles.bentoSmallValue, { color: Colors.given }]}>
-                {formatAmount(data.totalGiven)}
-              </Text>
+              <Text style={[styles.bentoSmallValue, { color: C.given }]}>{formatAmount(data.totalGiven)}</Text>
             </View>
-            {/* Pending */}
-            <View style={[styles.bentoCard, styles.bentoSmall]}>
+            <View style={[styles.bentoCard, styles.bentoSmall, { backgroundColor: C.surfaceContainerLowest }]}>
               <View style={styles.bentoRow}>
-                <MaterialIcons name="pending" size={18} color={Colors.onSurfaceVariant} />
-                <Text style={styles.bentoSmallLabel}>Pending</Text>
+                <MaterialIcons name="pending" size={16} color={C.onSurfaceVariant} />
+                <Text style={[styles.bentoSmallLabel, { color: C.onSurfaceVariant }]}>{t.pending}</Text>
               </View>
-              <Text style={styles.bentoSmallValue}>{formatAmount(data.pending)}</Text>
+              <Text style={[styles.bentoSmallValue, { color: C.onSurface }]}>{formatAmount(data.pending)}</Text>
             </View>
           </View>
         </View>
 
-        {/* ── Settlement Pulse Chart ── */}
-        <View style={styles.pulseCard}>
-          <Text style={styles.pulseTitle}>Payment Speed</Text>
-          <Text style={styles.pulseSub}>Recent transaction activity</Text>
+        {/* ── Debt Health Score ── */}
+        <View style={[styles.healthCard, { backgroundColor: C.surfaceContainerLowest }]}>
+          <View style={styles.healthHeader}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: C.onSurface }]}>{t.debtHealthScore}</Text>
+              <Text style={[styles.sectionSub, { color: C.onSurfaceVariant }]}>Based on your give/receive ratio</Text>
+            </View>
+            <View style={[styles.healthBadge, { backgroundColor: `${health.color}18` }]}>
+              <Text style={[styles.healthBadgeText, { color: health.color }]}>{health.label}</Text>
+            </View>
+          </View>
+          <View style={styles.scoreRow}>
+            <Text style={[styles.scoreNum, { color: health.color }]}>{data.healthScore}</Text>
+            <Text style={[styles.scoreMax, { color: C.onSurfaceVariant }]}>/100</Text>
+          </View>
+          <View style={[styles.scoreBar, { backgroundColor: C.surfaceContainerHigh }]}>
+            <View style={[styles.scoreFill, { width: `${data.healthScore}%`, backgroundColor: health.color }]} />
+          </View>
+        </View>
+
+        {/* ── Transaction Activity Chart ── */}
+        <View style={[styles.pulseCard, { backgroundColor: C.surfaceContainerLow }]}>
+          <Text style={[styles.sectionTitle, { color: C.onSurface }]}>{t.transactionActivity}</Text>
+          <Text style={[styles.sectionSub, { color: C.onSurfaceVariant }]}>{t.recentActivity2}</Text>
           <View style={styles.chartRow}>
-            {data.chartBars.map((h, i) => (
+            {data.chartBars.map((b: any, i: number) => (
               <View key={i} style={styles.barWrapper}>
                 <View style={[styles.bar, {
-                  height: Math.max(h * 80, 6),
-                  backgroundColor: i === 3 ? Colors.primary : `${Colors.primary}${Math.round(h * 100 + 40).toString(16).padStart(2, '0')}`,
+                  height: Math.max(b.val * 80, 6),
+                  backgroundColor: i === data.chartBars.length - 1 ? C.primary : `${C.primary}60`,
                 }]} />
               </View>
             ))}
           </View>
-          <View style={styles.watermark} pointerEvents="none">
-            <Text style={styles.watermarkText}>U</Text>
+          {/* Settlement Rate */}
+          <View style={styles.settlementRow}>
+            <Text style={[styles.settlementLabel, { color: C.onSurfaceVariant }]}>{t.settlementRate}</Text>
+            <Text style={[styles.settlementVal, { color: C.primary }]}>{data.settlementRate}%</Text>
           </View>
         </View>
 
@@ -146,43 +240,37 @@ export function InsightsScreen({ navigation }: Props) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={styles.sectionTitle}>Top Pending</Text>
-              <Text style={styles.sectionSub}>People who owe you</Text>
+              <Text style={[styles.sectionTitle, { color: C.onSurface }]}>{t.topPending}</Text>
+              <Text style={[styles.sectionSub, { color: C.onSurfaceVariant }]}>{t.peopleWhoOweYou}</Text>
             </View>
-            <TouchableOpacity><Text style={styles.viewAll}>View all</Text></TouchableOpacity>
           </View>
 
           {data.topPending.length === 0 ? (
-            <View style={styles.emptyPending}>
+            <View style={[styles.emptyPending, { backgroundColor: C.surfaceContainerLow }]}>
               <Text style={styles.emptyEmoji}>🎉</Text>
-              <Text style={styles.emptyText}>All accounts settled!</Text>
+              <Text style={[styles.emptyText, { color: C.onSurfaceVariant }]}>{t.allSettledBang}</Text>
             </View>
           ) : (
             <View style={styles.pendingList}>
-              {data.topPending.map(p => {
+              {data.topPending.map((p: any) => {
                 const av = getAvatarColor(p.name);
-                const daysAgo = Math.floor(Math.random() * 7);
                 return (
                   <TouchableOpacity
                     key={p.personId}
-                    style={styles.pendingRow}
+                    style={[styles.pendingRow, { backgroundColor: C.surfaceContainerLowest }]}
                     onPress={() => navigation.navigate('PersonDetail', { personId: p.personId })}
                   >
                     <View style={[styles.pendingAvatar, { backgroundColor: av.bg }]}>
-                      <Text style={[styles.pendingInitials, { color: av.text }]}>
-                        {getInitials(p.name)}
-                      </Text>
+                      <Text style={[styles.pendingInitials, { color: av.text }]}>{getInitials(p.name)}</Text>
                     </View>
                     <View style={styles.pendingInfo}>
-                      <Text style={styles.pendingName}>{p.name}</Text>
-                      <Text style={styles.pendingTime}>{daysAgo === 0 ? 'Active today' : `${daysAgo}d ago`}</Text>
+                      <Text style={[styles.pendingName, { color: C.onSurface }]}>{p.name}</Text>
+                      <Text style={[styles.pendingTime, { color: C.onSurfaceVariant }]}>Pending payment</Text>
                     </View>
                     <View style={styles.pendingRight}>
-                      <Text style={styles.pendingAmount}>{formatCurrency(Math.abs(p.netBalance))}</Text>
-                      <View style={styles.pendingBadge}>
-                        <Text style={styles.pendingBadgeText}>
-                          {daysAgo > 5 ? 'OVERDUE' : daysAgo > 2 ? 'DUE SOON' : 'PENDING'}
-                        </Text>
+                      <Text style={[styles.pendingAmount, { color: C.given }]}>{formatCurrency(Math.abs(p.netBalance))}</Text>
+                      <View style={[styles.pendingBadge, { backgroundColor: `${C.given}18` }]}>
+                        <Text style={[styles.pendingBadgeText, { color: C.given }]}>PENDING</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -197,84 +285,73 @@ export function InsightsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.surface },
   topBar: {
-    paddingHorizontal: 24, paddingTop: 52, paddingBottom: 16,
-    backgroundColor: Colors.surfaceContainerLowest, ...Shadow.sm,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 6, elevation: 3,
   },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logoChip: {
-    width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  logoText: { fontSize: 18, fontWeight: '900', color: Colors.white },
-  brandName: { fontSize: 20, fontWeight: '800', color: Colors.primary },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brandLogo: { width: 34, height: 34, borderRadius: 10 },
+  brandName: { fontSize: 20, fontWeight: '900' },
+  refreshBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 
-  scroll: { padding: 20, gap: 20, paddingBottom: 100 },
+  scroll: { padding: 20, gap: 16 },
   hero: { gap: 4 },
-  heroSub: { fontSize: 13, fontWeight: '600', color: Colors.onSurfaceVariant },
-  heroTitle: { fontSize: 36, fontWeight: '800', color: Colors.onSurface },
+  heroSub: { fontSize: 12, fontWeight: '600' },
+  heroTitle: { fontSize: 36, fontWeight: '800' },
 
-  bento: { flexDirection: 'row', gap: 12, height: 200 },
-  bentoCard: { backgroundColor: Colors.white, borderRadius: BorderRadius['2xl'], padding: 20, ...Shadow.md },
+  bento: { flexDirection: 'row', gap: 12, height: 190 },
+  bentoCard: { borderRadius: BorderRadius['2xl'], padding: 18, ...Shadow.sm },
   bentoLarge: { flex: 1.2, justifyContent: 'space-between' },
   bentoRight: { flex: 1, gap: 12 },
   bentoSmall: { flex: 1, justifyContent: 'space-between' },
-  bentoIconBox: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: `${Colors.received}15`,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  bentoLabel: { fontSize: 12, fontWeight: '600', color: Colors.onSurfaceVariant },
-  bentoSpacer: { flex: 1 },
-  bentoValue: { fontSize: 24, fontWeight: '800' },
-  progressBar: { width: '100%', height: 5, backgroundColor: Colors.surfaceContainerLow, borderRadius: 3 },
-  progressFill: { height: 5, borderRadius: 3 },
-  bentoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  bentoSmallLabel: { fontSize: 11, fontWeight: '600', color: Colors.onSurfaceVariant },
-  bentoSmallValue: { fontSize: 20, fontWeight: '800', color: Colors.onSurface },
+  bentoIconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  bentoLabel: { fontSize: 11, fontWeight: '600' },
+  bentoValue: { fontSize: 22, fontWeight: '900' },
+  progressBar: { width: '100%', height: 4, borderRadius: 2 },
+  progressFill: { height: 4, borderRadius: 2 },
+  bentoRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  bentoSmallLabel: { fontSize: 11, fontWeight: '600' },
+  bentoSmallValue: { fontSize: 18, fontWeight: '900' },
 
-  pulseCard: {
-    backgroundColor: Colors.surfaceContainerLow,
-    borderRadius: BorderRadius['3xl'],
-    padding: 24, overflow: 'hidden', position: 'relative',
-  },
-  pulseTitle: { fontSize: 17, fontWeight: '800', color: Colors.onSurface, marginBottom: 4 },
-  pulseSub: { fontSize: 12, color: Colors.onSurfaceVariant, marginBottom: 20 },
-  chartRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 88 },
+  healthCard: { borderRadius: BorderRadius['2xl'], padding: 20, gap: 12, ...Shadow.sm },
+  healthHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  healthBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
+  healthBadgeText: { fontSize: 12, fontWeight: '800' },
+  scoreRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  scoreNum: { fontSize: 48, fontWeight: '900' },
+  scoreMax: { fontSize: 18, fontWeight: '600' },
+  scoreBar: { height: 8, borderRadius: 4 },
+  scoreFill: { height: 8, borderRadius: 4 },
+
+  pulseCard: { borderRadius: BorderRadius['2xl'], padding: 20, gap: 12 },
+  chartRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 88 },
   barWrapper: { flex: 1, justifyContent: 'flex-end' },
   bar: { width: '100%', borderRadius: 6, minHeight: 6 },
-  watermark: { position: 'absolute', right: -16, bottom: -24, opacity: 0.04 },
-  watermarkText: { fontSize: 120, fontWeight: '900', color: Colors.primary },
+  settlementRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 },
+  settlementLabel: { fontSize: 13, fontWeight: '600' },
+  settlementVal: { fontSize: 18, fontWeight: '800' },
 
-  section: { gap: 16 },
+  section: { gap: 12 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: Colors.onSurface },
-  sectionSub: { fontSize: 12, color: Colors.onSurfaceVariant },
-  viewAll: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  sectionTitle: { fontSize: 18, fontWeight: '800' },
+  sectionSub: { fontSize: 12 },
   pendingList: { gap: 10 },
   pendingRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surfaceContainerLow,
-    borderRadius: BorderRadius['2xl'], padding: 16,
-    ...Shadow.sm,
+    borderRadius: BorderRadius['2xl'], padding: 14, ...Shadow.sm,
   },
-  pendingAvatar: {
-    width: 48, height: 48, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center', marginRight: 14,
-  },
-  pendingInitials: { fontSize: 16, fontWeight: '800' },
+  pendingAvatar: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  pendingInitials: { fontSize: 15, fontWeight: '800' },
   pendingInfo: { flex: 1 },
-  pendingName: { fontSize: 15, fontWeight: '700', color: Colors.onSurface },
-  pendingTime: { fontSize: 12, color: Colors.onSurfaceVariant },
+  pendingName: { fontSize: 15, fontWeight: '700' },
+  pendingTime: { fontSize: 12 },
   pendingRight: { alignItems: 'flex-end', gap: 4 },
-  pendingAmount: { fontSize: 17, fontWeight: '800', color: Colors.given },
-  pendingBadge: {
-    backgroundColor: `${Colors.given}18`, paddingHorizontal: 8,
-    paddingVertical: 2, borderRadius: 20,
-  },
-  pendingBadgeText: { fontSize: 9, fontWeight: '800', color: Colors.given, letterSpacing: 0.5 },
-  emptyPending: { alignItems: 'center', paddingVertical: 32, gap: 8 },
-  emptyEmoji: { fontSize: 40 },
-  emptyText: { fontSize: 15, fontWeight: '600', color: Colors.onSurfaceVariant },
+  pendingAmount: { fontSize: 16, fontWeight: '800' },
+  pendingBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
+  pendingBadgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  emptyPending: { alignItems: 'center', paddingVertical: 28, gap: 8, borderRadius: BorderRadius['2xl'] },
+  emptyEmoji: { fontSize: 36 },
+  emptyText: { fontSize: 14, fontWeight: '600' },
 });
