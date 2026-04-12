@@ -1,11 +1,12 @@
 {
   "expo": {
     "name": "Udharo",
-    "slug": "Udharo",
+    "slug": "udharo",
     "version": "1.0.0",
+    "description": "Simple offline-first money tracking app for friends, families, and shopkeepers",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -13,18 +14,60 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.udharo.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Take photos as proof for transactions",
+        "NSPhotoLibraryUsageDescription": "Attach photos from gallery as transaction proof",
+        "NSMicrophoneUsageDescription": "Record voice notes as proof for transactions",
+        "NSContactsUsageDescription": "Pick contacts to quickly add people"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#006b2c"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.udharo.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-file-system",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Udharo to access photos for proof attachments",
+          "cameraPermission": "Allow Udharo to use camera for proof photos"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#006b2c"
+        }
+      ],
+      "expo-av",
+      "expo-local-authentication"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "udharo-app"
+      }
     }
   }
 }
