@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, StatusBar,
   Animated, Alert, Vibration,
@@ -6,10 +6,10 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { Colors, DarkColors, ThemeColors } from '../constants/colors';
-import { BorderRadius, Shadow } from '../constants/theme';
+import { Shadow } from '../constants/theme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { setPin, clearPin, verifyPin, getAppSettings, setAppLock } from '../database/settingsRepository';
+import { setPin, verifyPin } from '../database/settingsRepository';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AppLock'>;
 

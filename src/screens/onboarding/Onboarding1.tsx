@@ -1,7 +1,6 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import {
-  View, Text, StyleSheet, Dimensions, TouchableOpacity,
-  Animated, StatusBar, ScrollView,
+  View, Text, StyleSheet, Dimensions, TouchableOpacity, StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../types';
@@ -9,7 +8,7 @@ import { Colors } from '../../constants/colors';
 import { BorderRadius } from '../../constants/theme';
 import { MaterialIcons } from '@expo/vector-icons';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Onboarding1'>;
 

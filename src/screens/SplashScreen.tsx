@@ -3,11 +3,10 @@ import { View, Text, StyleSheet, Animated, StatusBar, Image } from 'react-native
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { Colors, DarkColors } from '../constants/colors';
-import { Shadow } from '../constants/theme';
+
 import { getAppSettings } from '../database/settingsRepository';
 import { getDatabase } from '../database/schema';
 import { useTheme } from '../context/ThemeContext';
-
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
 const LOGO_WITH_TEXT = require('../../assets/UDHARO LOGO (WITH TEXT).png');

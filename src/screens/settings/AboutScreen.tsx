@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, Image, Linking, Platform,
+  StatusBar, Alert, Image, Linking,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SettingsStackParamList } from '../../types';
@@ -14,8 +14,7 @@ const LOGO_WITH_TEXT = require('../../../assets/UDHARO LOGO (WITH TEXT).png');
 const LOGO_BLACK_BG  = require('../../../assets/UDHARO LOGO (BLACK BG).png');
 const CREATOR_PHOTO  = require('../../../assets/NORMAL PHOTO RED BACKGROUND.png');
 
-// TODO: Replace with your actual Google Form URL when ready
-const FEEDBACK_FORM_URL = 'https://forms.gle/placeholder-feedback-form';
+// TODO: Replace with the Google Form URL when ready
 const INSTAGRAM_URL = 'https://instagram.com/aditya.gothe';
 const LINKEDIN_URL  = 'https://linkedin.com/in/aditya-gothe';
 

@@ -6,7 +6,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../types';
 import { Colors, DarkColors, ThemeColors } from '../../constants/colors';
-import { BorderRadius, Shadow, Spacing } from '../../constants/theme';
+import { BorderRadius } from '../../constants/theme';
 import { usePeopleStore } from '../../store';
 import { PersonCard } from '../../components/PersonCard';
 import { formatCurrency, formatAmount } from '../../utils/helpers';
@@ -21,7 +21,7 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 68;
 
 export function HomeScreen({ navigation }: Props) {
-  const { people, globalBalance, isLoading, loadPeople } = usePeopleStore();
+  const { people, globalBalance, loadPeople } = usePeopleStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

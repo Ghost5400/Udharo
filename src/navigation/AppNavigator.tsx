@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import {
@@ -10,7 +10,6 @@ import {
   MainTabParamList, HomeStackParamList, SettingsStackParamList,
 } from '../types';
 import { Colors, DarkColors } from '../constants/colors';
-import { BorderRadius } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 // Screens
@@ -39,7 +38,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
-const LOGO_ICON = require('../../assets/UDHARO LOGO (WHITE BG).png');
+
 
 // ─── Onboarding Navigator ─────────────────────────────────────────────────────
 function OnboardingNavigator() {

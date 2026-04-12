@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, Image, SectionList, TextInput, KeyboardAvoidingView, Platform
+  View, Text, StyleSheet, TouchableOpacity,
+  StatusBar, Alert, Image, SectionList, TextInput
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { HomeStackParamList, TransactionGroup } from '../../types';
+import { HomeStackParamList } from '../../types';
 import { Colors } from '../../constants/colors';
 import { BorderRadius, Shadow } from '../../constants/theme';
 import { usePeopleStore, useTransactionsStore } from '../../store';
@@ -24,29 +24,27 @@ export function PersonDetailScreen({ navigation, route }: Props) {
   const { personId } = route.params;
   const { people, deletePerson, updatePersonNotes } = usePeopleStore();
   const { loadTransactions, transactionsByPerson } = useTransactionsStore();
-  const [refreshing, setRefreshing] = useState(false);
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [tempNotes, setTempNotes] = useState('');
-
   const { isDark, t } = useTheme();
   const C = isDark ? DarkColors : Colors;
   const styles = makeStyles(C);
 
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [tempNotes, setTempNotes] = useState('');
+
   const person = people.find(p => p.id === personId);
   const groups = transactionsByPerson.get(personId) ?? [];
 
+  // Load transactions on mount; also sync notes into temp state
   useEffect(() => {
     loadTransactions(personId);
+  }, [personId]);
+
+  // Sync notes field when person.notes changes in store
+  useEffect(() => {
     if (person) {
       setTempNotes(person.notes || '');
     }
-  }, [personId, person?.notes]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadTransactions(personId);
-    setRefreshing(false);
-  }, [personId]);
+  }, [person?.notes]);
 
   const handleDelete = () => {
     Alert.alert(

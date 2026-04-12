@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../types';
 import { Colors } from '../../constants/colors';
@@ -15,10 +15,10 @@ export function Onboarding3({ navigation }: Props) {
     try {
       await setOnboardingComplete();
     } catch (e) {
-      console.warn("Failed to set onboarding status", e);
+      console.warn('Failed to set onboarding status', e);
     }
-    // Navigate cleanly to Main, bubbling up to the Root navigator seamlessly
-    navigation.navigate('Main' as any);
+    // Escape the Onboarding sub-stack up to the Root navigator and navigate to Main
+    navigation.getParent()?.navigate('Main' as never);
   };
 
   return (

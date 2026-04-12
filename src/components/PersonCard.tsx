@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Person } from '../types';
-import { Colors, DarkColors, ThemeColors } from '../constants/colors';
-import { BorderRadius, Shadow } from '../constants/theme';
+import { Colors, DarkColors } from '../constants/colors';
+import { BorderRadius } from '../constants/theme';
 import { formatCurrency, getInitials, getAvatarColor, isSettled } from '../utils/helpers';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
-import { BorderRadius, Shadow } from '../constants/theme';
+
 import { Transaction, Attachment } from '../types';
 import { formatCurrency, formatDateShort } from '../utils/helpers';
 

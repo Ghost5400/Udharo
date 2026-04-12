@@ -1,5 +1,5 @@
 import { getDatabase } from './schema';
-import { Reminder, AddReminderInput, ReminderStatus } from '../types';
+import { Reminder, AddReminderInput } from '../types';
 import * as Notifications from 'expo-notifications';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';

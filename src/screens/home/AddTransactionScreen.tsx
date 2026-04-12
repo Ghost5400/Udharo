@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Alert, StatusBar, Image, Platform,
+  ScrollView, Alert, StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList, TransactionType, AttachmentInput, TRANSACTION_TAGS } from '../../types';
 import { Colors, DarkColors, ThemeColors } from '../../constants/colors';
 import { BorderRadius, Shadow } from '../../constants/theme';
 import { useTransactionsStore, usePeopleStore } from '../../store';
-import { todayISO, formatCurrency } from '../../utils/helpers';
+import { todayISO } from '../../utils/helpers';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';

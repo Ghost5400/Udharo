@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Platform,
+  View, Text, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Platform, Image, Alert,
 } from 'react-native';
 import { MainTabParamList, HomeStackParamList } from '../../types';
 import { Colors, DarkColors } from '../../constants/colors';
@@ -10,7 +10,7 @@ import {
 } from '../../database/transactionRepository';
 import { getGlobalBalance } from '../../database/peopleRepository';
 import {
-  formatCurrency, formatAmount, getInitials, getAvatarColor, formatDate,
+  formatCurrency, formatAmount, getInitials, getAvatarColor,
 } from '../../utils/helpers';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -19,7 +19,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../context/ThemeContext';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import { Image, Alert } from 'react-native';
 
 const LOGO_WHITE_BG = require('../../../assets/UDHARO LOGO (WHITE BG).png');
 const LOGO_BLACK_BG = require('../../../assets/UDHARO LOGO (BLACK BG).png');

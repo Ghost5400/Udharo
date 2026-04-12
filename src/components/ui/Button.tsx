@@ -4,7 +4,7 @@ import {
   StyleSheet, ViewStyle, TextStyle, View,
 } from 'react-native';
 import { Colors } from '../../constants/colors';
-import { BorderRadius, Typography, Shadow } from '../../constants/theme';
+import { BorderRadius, Shadow } from '../../constants/theme';
 
 interface ButtonProps {
   label: string;

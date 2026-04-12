@@ -86,9 +86,9 @@ export async function importBackup(fileUri: string): Promise<void> {
     // Restore people
     for (const p of backup.people) {
       await db.runAsync(
-        `INSERT OR REPLACE INTO people (id, name, phone, photo_uri, net_balance, created_at, updated_at, is_deleted)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [p.id, p.name, p.phone, p.photo_uri, p.net_balance, p.created_at, p.updated_at, p.is_deleted]
+        `INSERT OR REPLACE INTO people (id, name, phone, photo_uri, notes, net_balance, created_at, updated_at, is_deleted)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [p.id, p.name, p.phone ?? null, p.photo_uri ?? null, p.notes ?? null, p.net_balance, p.created_at, p.updated_at, p.is_deleted]
       );
     }
 

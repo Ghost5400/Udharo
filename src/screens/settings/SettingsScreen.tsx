@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, StatusBar, Alert, Image, Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, StatusBar, Alert, Image,
 } from 'react-native';
 import { Colors, DarkColors, ThemeColors } from '../../constants/colors';
 import { BorderRadius, Shadow } from '../../constants/theme';
@@ -8,7 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SettingsStackParamList } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
-import { setAppLock, clearPin, getAppSettings } from '../../database/settingsRepository';
+import { setAppLock as _setAppLock, clearPin, getAppSettings } from '../../database/settingsRepository';
 
 const LOGO_WHITE_BG = require('../../../assets/UDHARO LOGO (WHITE BG).png');
 const LOGO_BLACK_BG = require('../../../assets/UDHARO LOGO (BLACK BG).png');
@@ -44,7 +44,7 @@ function SettingRow({ icon, label, sublabel, onPress, right, danger, C }: RowPro
 }
 
 export function SettingsScreen({ navigation }: Props) {
-  const { isDark, theme, setTheme, t } = useTheme();
+  const { isDark, setTheme, t } = useTheme();
   const C = isDark ? DarkColors : Colors;
   const [appLockEnabled, setAppLockEnabled] = React.useState(false);
 
