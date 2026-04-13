@@ -17,8 +17,8 @@ export function Onboarding3({ navigation }: Props) {
     } catch (e) {
       console.warn('Failed to set onboarding status', e);
     }
-    // Navigate to Root navigator and go to AppLock for PIN setup
-    // Using reset prevents back-swipe back to onboarding
+    // Navigate to Root navigator and go to AppLock for PIN setup.
+    // Using reset prevents back-swipe returning to onboarding.
     const rootNav = navigation.getParent();
     if (rootNav) {
       rootNav.reset({
@@ -26,8 +26,8 @@ export function Onboarding3({ navigation }: Props) {
         routes: [{ name: 'AppLock' as never, params: { mode: 'setup' } as never }],
       });
     } else {
-      // Fallback: navigate directly to Main if no parent
-      navigation.navigate('Onboarding1' as never);
+      // Fallback: if parent navigator is unavailable, go directly to LanguageSetup
+      (navigation as any).replace('LanguageSetup');
     }
   };
 

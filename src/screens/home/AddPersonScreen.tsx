@@ -27,8 +27,10 @@ export function AddPersonScreen({ navigation, route }: Props) {
   const { isDark, t } = useTheme();
   const C = isDark ? DarkColors : Colors;
 
-  // ── Persist photo to app's permanent directory ──────────────────────────────
+  // ── Persist photo to app's permanent directory ──────────────────────────────────────
   const persistPhoto = async (tempUri: string): Promise<string> => {
+    // FileSystem is not available on web — return the original URI as-is
+    if (Platform.OS === 'web') return tempUri;
     const fsDocDir: string = (FileSystem as any).documentDirectory ?? '';
     const photoDir = `${fsDocDir}people_photos/`;
     const dirInfo = await (FileSystem as any).getInfoAsync(photoDir);
@@ -120,9 +122,14 @@ export function AddPersonScreen({ navigation, route }: Props) {
   };
 
   const doSave = async (trimmedName: string) => {
-    const person = await addPerson({ name: trimmedName, phone: phone.trim() || undefined, photoUri });
-    setLoading(false);
-    navigation.replace('PersonDetail', { personId: person.id });
+    try {
+      const person = await addPerson({ name: trimmedName, phone: phone.trim() || undefined, photoUri });
+      setLoading(false);
+      navigation.replace('PersonDetail', { personId: person.id });
+    } catch (e: any) {
+      Alert.alert(t.error, e.message);
+      setLoading(false);
+    }
   };
 
   const styles = makeStyles(C);

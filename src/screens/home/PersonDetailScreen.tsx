@@ -69,6 +69,10 @@ export function PersonDetailScreen({ navigation, route }: Props) {
   };
 
   const handleShareLedger = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Not supported', 'Sharing ledger is not available on web.');
+      return;
+    }
     try {
       const allTxns = groups.flatMap(g => g.transactions);
       let text = `Ledger with ${person?.name}\n`;
@@ -76,8 +80,8 @@ export function PersonDetailScreen({ navigation, route }: Props) {
       const direction = (person?.netBalance ?? 0) < 0 ? 'They Owe You' : 'You Owe Them';
       text += `Total Balance: ${formatCurrency(Math.abs(person?.netBalance ?? 0))} (${direction})\n\n`;
       text += `Transactions:\n`;
-      for (const t of allTxns) {
-        text += `${t.date} | ${t.type} | ${formatCurrency(t.amount)} | ${t.note ?? 'No note'}\n`;
+      for (const txn of allTxns) {
+        text += `${txn.date} | ${txn.type} | ${formatCurrency(txn.amount)} | ${txn.note ?? 'No note'}\n`;
       }
       
       const docDir: string = (FileSystem as any).documentDirectory ?? '';
@@ -109,7 +113,9 @@ export function PersonDetailScreen({ navigation, route }: Props) {
     try {
       await updatePersonNotes(personId, tempNotes);
       setIsEditingNotes(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     } catch (e: any) {
       Alert.alert('Error', e.message);
     }

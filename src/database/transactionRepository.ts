@@ -8,6 +8,7 @@ import {
   TransactionGroup,
 } from '../types';
 import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -120,23 +121,24 @@ async function saveAttachment(db: any, transactionId: string, att: AttachmentInp
   const attId = uuidv4();
   const now = new Date().toISOString();
 
-  // Copy file to app sandbox
-  const proofDir = `${(FileSystem as any).documentDirectory}proof/`;
-  const dirInfo = await FileSystem.getInfoAsync(proofDir);
-  if (!dirInfo.exists) {
-    await FileSystem.makeDirectoryAsync(proofDir, { intermediates: true });
-  }
-
-  const ext = att.fileUri.split('.').pop()?.split('?')[0] ?? (att.type === 'IMAGE' ? 'jpg' : 'm4a');
-  const destUri = `${proofDir}${attId}.${ext}`;
-
-  let finalUri = att.fileUri; // default: use original URI as fallback
-  try {
-    await FileSystem.copyAsync({ from: att.fileUri, to: destUri });
-    finalUri = destUri; // only use dest if copy succeeded
-  } catch {
-    // Copy failed (e.g., already in sandbox or permissions issue) — keep original URI
-    console.warn('[Udharo] Attachment copy failed, using original URI:', att.fileUri);
+  // File copy is only supported on native — FileSystem is unavailable / has no
+  // documentDirectory on web. Skip silently and store the original URI.
+  let finalUri = att.fileUri;
+  if (Platform.OS !== 'web') {
+    try {
+      const proofDir = `${(FileSystem as any).documentDirectory}proof/`;
+      const dirInfo = await FileSystem.getInfoAsync(proofDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(proofDir, { intermediates: true });
+      }
+      const ext = att.fileUri.split('.').pop()?.split('?')[0] ?? (att.type === 'IMAGE' ? 'jpg' : 'm4a');
+      const destUri = `${proofDir}${attId}.${ext}`;
+      await FileSystem.copyAsync({ from: att.fileUri, to: destUri });
+      finalUri = destUri;
+    } catch {
+      // Copy failed (e.g., already in sandbox or permissions issue) — keep original URI
+      console.warn('[Udharo] Attachment copy failed, using original URI:', att.fileUri);
+    }
   }
 
   await db.runAsync(

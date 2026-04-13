@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, Image, Dimensions
+  StatusBar, Alert, Image, Dimensions, Platform
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList, Transaction, Attachment } from '../../types';
@@ -58,9 +58,15 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await deleteTransaction(transaction.id, transaction.personId);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            navigation.goBack();
+            try {
+              await deleteTransaction(transaction.id, transaction.personId);
+              if (Platform.OS !== 'web') {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              }
+              navigation.goBack();
+            } catch (e: any) {
+              Alert.alert('Error', e.message ?? 'Could not delete transaction.');
+            }
           }
         }
       ]

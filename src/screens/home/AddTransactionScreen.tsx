@@ -24,6 +24,8 @@ const QUICK_AMOUNTS = [100, 500, 1000, 5000];
 
 // ─── Persist media file to permanent app directory ───────────────────────────
 async function persistFile(tempUri: string, folder: string, prefix: string): Promise<string> {
+  // FileSystem is not available on web — return the original URI unchanged
+  if (Platform.OS === 'web') return tempUri;
   const docDir: string = (FileSystem as any).documentDirectory ?? '';
   const dir = `${docDir}${folder}/`;
   const dirInfo = await (FileSystem as any).getInfoAsync(dir);
@@ -83,7 +85,7 @@ export function AddTransactionScreen({ navigation, route }: Props) {
   };
 
   const handleQuickAmount = (val: number) => {
-    Haptics.selectionAsync();
+    if (Platform.OS !== 'web') Haptics.selectionAsync();
     setAmount(String(val));
   };
 
@@ -131,15 +133,13 @@ export function AddTransactionScreen({ navigation, route }: Props) {
         if (uri) {
           // Persist voice note to permanent internal storage
           const persistedUri = await persistFile(uri, 'proof_audio', 'voice');
-          // Save audio to device storage (Android Files/Downloads)
-          if (Platform.OS !== 'web') {
-            try {
-              const { status } = await MediaLibrary.requestPermissionsAsync();
-              if (status === 'granted') {
-                await MediaLibrary.saveToLibraryAsync(persistedUri);
-              }
-            } catch { /* non-fatal */ }
-          }
+          // Save audio to device storage — we are already inside the native-only block
+          try {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status === 'granted') {
+              await MediaLibrary.saveToLibraryAsync(persistedUri);
+            }
+          } catch { /* non-fatal */ }
           setAttachments(prev => [...prev, { type: 'AUDIO', fileUri: persistedUri, mimeType: 'audio/m4a' }]);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }

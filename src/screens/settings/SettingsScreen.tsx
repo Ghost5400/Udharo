@@ -49,12 +49,16 @@ export function SettingsScreen({ navigation }: Props) {
   const { isDark, setTheme, t } = useTheme();
   const C = isDark ? DarkColors : Colors;
   const [appLockEnabled, setAppLockEnabled] = React.useState(false);
+  const [appLockType, setAppLockType] = React.useState<'pin' | 'biometric' | undefined>();
 
   // Reload app lock state every time this screen comes into focus
   // This ensures toggle updates after returning from PIN setup
   useFocusEffect(
     React.useCallback(() => {
-      getAppSettings().then(s => setAppLockEnabled(s.appLockEnabled));
+      getAppSettings().then(s => {
+        setAppLockEnabled(s.appLockEnabled);
+        setAppLockType(s.appLockType);
+      });
     }, [])
   );
 
@@ -136,7 +140,11 @@ export function SettingsScreen({ navigation }: Props) {
           <SettingRow
             C={C} icon="lock"
             label={t.appLock}
-            sublabel={appLockEnabled ? t.biometricActive : t.disabled}
+            sublabel={
+              appLockEnabled
+                ? (appLockType === 'biometric' ? t.biometricActive : 'PIN Active')
+                : t.disabled
+            }
             right={
               <Switch
                 value={appLockEnabled}

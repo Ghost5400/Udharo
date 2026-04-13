@@ -52,6 +52,7 @@ export async function addReminder(input: AddReminderInput, personName: string, a
   );
 
   const row = await db.getFirstAsync(`SELECT * FROM reminders WHERE id = ?`, id);
+  if (!row) throw new Error('Failed to retrieve created reminder from database');
   return rowToReminder(row);
 }
 

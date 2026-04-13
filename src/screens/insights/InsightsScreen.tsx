@@ -85,6 +85,10 @@ export function InsightsScreen({ navigation }: Props) {
 
   const handleExportReport = async () => {
     if (!data?.recentTxns) return;
+    if (Platform.OS === 'web') {
+      Alert.alert('Not supported', 'Report export is not available on web.');
+      return;
+    }
     setExporting(true);
     try {
       const month = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
