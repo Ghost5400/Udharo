@@ -265,7 +265,7 @@ function makeStyles(C: ThemeColors) {
       position: 'absolute', right: 24,
       width: 58, height: 58, borderRadius: 18,
       alignItems: 'center', justifyContent: 'center',
-      shadowColor: Colors.primary,
+      shadowColor: C.primary,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.35, shadowRadius: 16, elevation: 10,
     },

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Platform, Image, Alert,
 } from 'react-native';
@@ -15,6 +15,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../../context/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 
@@ -32,7 +33,10 @@ export function InsightsScreen({ navigation }: Props) {
   const [data, setData] = useState<any>(null);
   const [exporting, setExporting] = useState(false);
 
-  useEffect(() => { loadData(); }, []);
+  useFocusEffect(
+    useCallback(() => { loadData(); }, [])
+  );
+
 
   const loadData = async () => {
     const [balance, topPending, recent] = await Promise.all([

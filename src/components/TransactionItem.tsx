@@ -28,7 +28,11 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
 
   const isGive = transaction.type === 'GIVE';
   const amountColor = isGive ? C.given : C.received;
-  const statusColor = transaction.status === 'PENDING' ? C.given : C.received;
+  // PENDING = red, PARTIAL = orange/warning, SETTLED = green
+  const statusColor =
+    transaction.status === 'PENDING' ? C.given :
+    transaction.status === 'PARTIAL' ? C.warning :
+    C.received;
   const iconName = getTransactionIcon(transaction.note);
   const hasAttachment = (transaction.attachments?.length ?? 0) > 0;
 

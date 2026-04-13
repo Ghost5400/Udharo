@@ -69,7 +69,9 @@ export function PersonDetailScreen({ navigation, route }: Props) {
     try {
       const allTxns = groups.flatMap(g => g.transactions);
       let text = `Ledger with ${person?.name}\n`;
-      text += `Total Balance: ${formatCurrency(Math.abs(person?.netBalance ?? 0))} (${person?.netBalance && person.netBalance < 0 ? 'They Owe You' : 'You Owe Them'})\n\n`;
+      // netBalance < 0 means given > received → they owe you
+      const direction = (person?.netBalance ?? 0) < 0 ? 'They Owe You' : 'You Owe Them';
+      text += `Total Balance: ${formatCurrency(Math.abs(person?.netBalance ?? 0))} (${direction})\n\n`;
       text += `Transactions:\n`;
       for (const t of allTxns) {
         text += `${t.date} | ${t.type} | ${formatCurrency(t.amount)} | ${t.note ?? 'No note'}\n`;
@@ -263,7 +265,6 @@ export function PersonDetailScreen({ navigation, route }: Props) {
             {sections.length > 0 && (
               <View style={styles.historyHeader}>
                 <Text style={[styles.historyTitle, { color: C.onSurface }]}>{t.recentActivity}</Text>
-                <TouchableOpacity><Text style={[styles.viewAll, { color: C.primary }]}>{t.viewAll}</Text></TouchableOpacity>
               </View>
             )}
           </>

@@ -1,6 +1,7 @@
 import { getDatabase } from './schema';
 import { Reminder, AddReminderInput } from '../types';
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,18 +29,20 @@ export async function addReminder(input: AddReminderInput, personName: string, a
     ?? (amount ? `₹${amount.toLocaleString('en-IN')} pending from ${personName}` : `Reminder for ${personName}`);
 
   let notificationId: string | undefined;
-  try {
-    notificationId = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Udharo Reminder 💰',
-        body: notificationBody,
-        data: { personId: input.personId, transactionId: input.transactionId },
-        sound: true,
-      },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(input.remindAt) },
-    });
-  } catch (e) {
-    console.warn('Could not schedule notification:', e);
+  if (Platform.OS !== 'web') {
+    try {
+      notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Udharo Reminder 💰',
+          body: notificationBody,
+          data: { personId: input.personId, transactionId: input.transactionId },
+          sound: true,
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(input.remindAt) },
+      });
+    } catch (e) {
+      console.warn('Could not schedule notification:', e);
+    }
   }
 
   await db.runAsync(

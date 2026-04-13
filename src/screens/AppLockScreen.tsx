@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, StatusBar,
-  Animated, Alert, Vibration,
+  Animated, Alert, Vibration, Platform,
 } from 'react-native';
+
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, SettingsStackParamList } from '../types';
 import { Colors, DarkColors, ThemeColors } from '../constants/colors';
@@ -48,12 +49,13 @@ export function AppLockScreen({ navigation, route }: Props) {
 
   function shake() {
     Vibration.vibrate(400);
+    const useND = Platform.OS !== 'web';
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 12, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -12, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 12,  duration: 60, useNativeDriver: useND }),
+      Animated.timing(shakeAnim, { toValue: -12, duration: 60, useNativeDriver: useND }),
+      Animated.timing(shakeAnim, { toValue: 8,   duration: 60, useNativeDriver: useND }),
+      Animated.timing(shakeAnim, { toValue: -8,  duration: 60, useNativeDriver: useND }),
+      Animated.timing(shakeAnim, { toValue: 0,   duration: 60, useNativeDriver: useND }),
     ]).start();
   }
 

@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   },
 
   // Labels
-  label: { fontWeight: '700', fontFamily: 'PlusJakartaSans' },
+  label: { fontWeight: '700' },
   label_sm: { fontSize: 13 },
   label_md: { fontSize: 15 },
   label_lg: { fontSize: 17 },

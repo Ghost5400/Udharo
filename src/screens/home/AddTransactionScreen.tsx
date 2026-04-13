@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Alert, StatusBar,
+  ScrollView, Alert, StatusBar, Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList, TransactionType, AttachmentInput, TRANSACTION_TAGS } from '../../types';
@@ -12,7 +12,8 @@ import { todayISO } from '../../utils/helpers';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
+// expo-av is not supported on web and is deprecated — only import on native
+const AudioModule = Platform.OS !== 'web' ? require('expo-av').Audio : null;
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -56,8 +57,8 @@ export function AddTransactionScreen({ navigation, route }: Props) {
   const [selectedTag, setSelectedTag] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
 
-  // Voice recording state
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  // Voice recording state (native only — not supported on web)
+  const [recording, setRecording] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
 
   const isGive = txnType === 'GIVE';
@@ -101,6 +102,10 @@ export function AddTransactionScreen({ navigation, route }: Props) {
   };
 
   const handleVoice = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Not supported', 'Voice recording is not available on web.');
+      return;
+    }
     if (isRecording) {
       // Stop recording
       try {
@@ -122,17 +127,17 @@ export function AddTransactionScreen({ navigation, route }: Props) {
     } else {
       // Start recording
       try {
-        const { status } = await Audio.requestPermissionsAsync();
+        const { status } = await AudioModule.requestPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Microphone permission needed', 'Please allow microphone access in Settings.');
           return;
         }
-        await Audio.setAudioModeAsync({
+        await AudioModule.setAudioModeAsync({
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
         });
-        const { recording: rec } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        const { recording: rec } = await AudioModule.Recording.createAsync(
+          AudioModule.RecordingOptionsPresets.HIGH_QUALITY
         );
         setRecording(rec);
         setIsRecording(true);

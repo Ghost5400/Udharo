@@ -131,7 +131,7 @@ export function BackupRestoreScreen({ navigation }: Props) {
           >
             {backing
               ? <ActivityIndicator color="#fff" size="small" />
-              : <MaterialIcons name="download" size={20} color="#fff" />
+              : <MaterialIcons name="upload" size={20} color="#fff" />
             }
           </TouchableOpacity>
         </View>
@@ -154,7 +154,7 @@ export function BackupRestoreScreen({ navigation }: Props) {
           >
             {restoring
               ? <ActivityIndicator color="#fff" size="small" />
-              : <MaterialIcons name="upload" size={20} color="#fff" />
+              : <MaterialIcons name="download" size={20} color="#fff" />
             }
           </TouchableOpacity>
         </View>

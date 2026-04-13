@@ -2,9 +2,13 @@ import * as SQLite from 'expo-sqlite';
 import { Platform } from 'react-native';
 
 let db: SQLite.SQLiteDatabase | null = null;
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
-  if (!db) {
+  if (db) return db;
+  if (dbPromise) return dbPromise;
+
+  dbPromise = (async () => {
     let instance: SQLite.SQLiteDatabase;
     try {
       instance = await SQLite.openDatabaseAsync('udharo_v2.db');
@@ -18,13 +22,16 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     try {
       await initializeSchema(instance);
       db = instance;
+      return db;
     } catch (error) {
       console.error('Schema initialization failed:', error);
+      dbPromise = null; // allow retry
       try { await instance.closeAsync(); } catch (e) {}
       throw error;
     }
-  }
-  return db;
+  })();
+
+  return dbPromise;
 }
 
 export async function initializeSchema(database: SQLite.SQLiteDatabase): Promise<void> {

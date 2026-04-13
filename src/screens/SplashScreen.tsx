@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated, StatusBar, Image, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { Colors, DarkColors } from '../constants/colors';
@@ -18,9 +18,10 @@ export function SplashScreen({ navigation }: Props) {
   const C = isDark ? DarkColors : Colors;
 
   useEffect(() => {
+    const useND = Platform.OS !== 'web';
     Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, damping: 12, stiffness: 100 }),
-      Animated.timing(opacityAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: useND, damping: 12, stiffness: 100 }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 500, useNativeDriver: useND }),
     ]).start();
 
     const init = async () => {
