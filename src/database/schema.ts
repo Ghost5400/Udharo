@@ -2,18 +2,31 @@ import * as SQLite from 'expo-sqlite';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
+import { Platform } from 'react-native';
+
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!db) {
-    db = await SQLite.openDatabaseAsync('udharo.db');
-    await initializeSchema(db);
+    const instance = await SQLite.openDatabaseAsync('udharo.db');
+    try {
+      await initializeSchema(instance);
+      db = instance;
+    } catch (error) {
+      console.error('Schema initialization failed:', error);
+      throw error;
+    }
   }
   return db;
 }
 
 export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void> {
+  if (Platform.OS !== 'web') {
+    await db.execAsync(`
+      PRAGMA journal_mode = WAL;
+      PRAGMA foreign_keys = ON;
+    `);
+  }
+
   await db.execAsync(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA foreign_keys = ON;
 
     -- People table
     CREATE TABLE IF NOT EXISTS people (

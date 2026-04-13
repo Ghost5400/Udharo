@@ -46,7 +46,7 @@ export async function getTransactionsForPerson(personId: string): Promise<Transa
   const db = await getDatabase();
   const rows = await db.getAllAsync(
     `SELECT * FROM transactions WHERE person_id = ? AND is_deleted = 0 ORDER BY date DESC, created_at DESC`,
-    [personId]
+    personId
   );
   return rows.map(rowToTransaction);
 }
@@ -82,7 +82,7 @@ export async function getTransactionById(id: string): Promise<Transaction | null
   const db = await getDatabase();
   const row = await db.getFirstAsync(
     `SELECT * FROM transactions WHERE id = ? AND is_deleted = 0`,
-    [id]
+    id
   );
   return row ? rowToTransaction(row) : null;
 }
@@ -98,7 +98,7 @@ export async function addTransaction(input: AddTransactionInput): Promise<Transa
     await db.runAsync(
       `INSERT INTO transactions (id, person_id, type, amount, note, date, status, settled_amount, tag, created_at, updated_at, is_deleted)
        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, 0)`,
-      [id, input.personId, input.type, input.amount, input.note ?? null, input.date, input.tag ?? null, now, now]
+      id, input.personId, input.type, input.amount, input.note ?? null, input.date, input.tag ?? null, now, now
     );
 
     // Save attachments
@@ -142,7 +142,7 @@ async function saveAttachment(db: any, transactionId: string, att: AttachmentInp
   await db.runAsync(
     `INSERT INTO attachments (id, transaction_id, type, file_uri, mime_type, file_size, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [attId, transactionId, att.type, finalUri, att.mimeType ?? null, att.fileSize ?? null, now]
+    attId, transactionId, att.type, finalUri, att.mimeType ?? null, att.fileSize ?? null, now
   );
 }
 
@@ -151,7 +151,7 @@ export async function getAttachmentsForTransaction(transactionId: string): Promi
   const db = await getDatabase();
   const rows = await db.getAllAsync(
     `SELECT * FROM attachments WHERE transaction_id = ? ORDER BY created_at ASC`,
-    [transactionId]
+    transactionId
   );
   return rows.map(rowToAttachment);
 }
@@ -179,7 +179,7 @@ export async function updateTransaction(
   values.push(now);
   values.push(id);
 
-  await db.runAsync(`UPDATE transactions SET ${fields.join(', ')} WHERE id = ?`, values);
+  await db.runAsync(`UPDATE transactions SET ${fields.join(', ')} WHERE id = ?`, ...values);
 
   // Recalculate balance since amount or type changed
   await recalculatePersonBalance(txn.personId);
@@ -195,7 +195,7 @@ export async function deleteTransaction(id: string): Promise<void> {
 
   await db.runAsync(
     `UPDATE transactions SET is_deleted = 1, updated_at = ? WHERE id = ?`,
-    [new Date().toISOString(), id]
+    new Date().toISOString(), id
   );
 
   await recalculatePersonBalance(txn.personId);
@@ -206,7 +206,7 @@ export async function getRecentTransactions(limit = 10): Promise<Transaction[]> 
   const db = await getDatabase();
   const rows = await db.getAllAsync(
     `SELECT * FROM transactions WHERE is_deleted = 0 ORDER BY date DESC, created_at DESC LIMIT ?`,
-    [limit]
+    limit
   );
   return rows.map(rowToTransaction);
 }
@@ -220,7 +220,7 @@ export async function getTopPendingPeople(limit = 5): Promise<{ personId: string
      WHERE p.is_deleted = 0 AND p.net_balance < 0
      ORDER BY p.net_balance ASC
      LIMIT ?`,
-    [limit]
+    limit
   );
   return rows as any[];
 }

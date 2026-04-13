@@ -45,10 +45,10 @@ export async function addReminder(input: AddReminderInput, personName: string, a
   await db.runAsync(
     `INSERT INTO reminders (id, person_id, transaction_id, remind_at, message, status, notification_id, created_at)
      VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?, ?)`,
-    [id, input.personId, input.transactionId ?? null, input.remindAt, input.message ?? null, notificationId ?? null, now]
+    id, input.personId, input.transactionId ?? null, input.remindAt, input.message ?? null, notificationId ?? null, now
   );
 
-  const row = await db.getFirstAsync(`SELECT * FROM reminders WHERE id = ?`, [id]);
+  const row = await db.getFirstAsync(`SELECT * FROM reminders WHERE id = ?`, id);
   return rowToReminder(row);
 }
 
@@ -57,7 +57,7 @@ export async function getRemindersForPerson(personId: string): Promise<Reminder[
   const db = await getDatabase();
   const rows = await db.getAllAsync(
     `SELECT * FROM reminders WHERE person_id = ? ORDER BY remind_at ASC`,
-    [personId]
+    personId
   );
   return rows.map(rowToReminder);
 }
@@ -65,7 +65,7 @@ export async function getRemindersForPerson(personId: string): Promise<Reminder[
 // ─── Cancel Reminder ─────────────────────────────────────────────────────────
 export async function cancelReminder(id: string): Promise<void> {
   const db = await getDatabase();
-  const row = await db.getFirstAsync(`SELECT * FROM reminders WHERE id = ?`, [id]) as any;
+  const row = await db.getFirstAsync(`SELECT * FROM reminders WHERE id = ?`, id) as any;
   if (!row) return;
 
   if (row.notification_id) {
@@ -78,7 +78,7 @@ export async function cancelReminder(id: string): Promise<void> {
 
   await db.runAsync(
     `UPDATE reminders SET status = 'CANCELLED' WHERE id = ?`,
-    [id]
+    id
   );
 }
 
@@ -87,7 +87,7 @@ export async function markReminderFired(notificationId: string): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
     `UPDATE reminders SET status = 'FIRED' WHERE notification_id = ?`,
-    [notificationId]
+    notificationId
   );
 }
 

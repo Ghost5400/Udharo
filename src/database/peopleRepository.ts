@@ -32,7 +32,7 @@ export async function getPersonById(id: string): Promise<Person | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync(
     `SELECT * FROM people WHERE id = ? AND is_deleted = 0`,
-    [id]
+    id
   );
   return row ? rowToPerson(row) : null;
 }
@@ -42,7 +42,7 @@ export async function searchPeople(query: string): Promise<Person[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync(
     `SELECT * FROM people WHERE is_deleted = 0 AND (name LIKE ? OR phone LIKE ?) ORDER BY name ASC`,
-    [`%${query}%`, `%${query}%`]
+    `%${query}%`, `%${query}%`
   );
   return rows.map(rowToPerson);
 }
@@ -56,7 +56,7 @@ export async function addPerson(input: AddPersonInput): Promise<Person> {
   await db.runAsync(
     `INSERT INTO people (id, name, phone, photo_uri, notes, net_balance, created_at, updated_at, is_deleted)
      VALUES (?, ?, ?, ?, NULL, 0, ?, ?, 0)`,
-    [id, input.name.trim(), input.phone ?? null, input.photoUri ?? null, now, now]
+    id, input.name.trim(), input.phone ?? null, input.photoUri ?? null, now, now
   );
 
   return (await getPersonById(id))!;
@@ -67,7 +67,7 @@ export async function updatePersonNotes(id: string, notes: string): Promise<void
   const db = await getDatabase();
   await db.runAsync(
     `UPDATE people SET notes = ?, updated_at = ? WHERE id = ?`,
-    [notes, new Date().toISOString(), id]
+    notes, new Date().toISOString(), id
   );
 }
 
@@ -89,7 +89,7 @@ export async function updatePerson(id: string, input: Partial<AddPersonInput>): 
 
   await db.runAsync(
     `UPDATE people SET ${fields.join(', ')} WHERE id = ?`,
-    values
+    ...values
   );
 
   return (await getPersonById(id))!;
@@ -105,14 +105,14 @@ export async function recalculatePersonBalance(personId: string): Promise<number
       COALESCE(SUM(CASE WHEN type = 'GIVE' AND is_deleted = 0 THEN amount ELSE 0 END), 0) as given
      FROM transactions
      WHERE person_id = ?`,
-    [personId]
+    personId
   );
 
   const netBalance = (result?.received ?? 0) - (result?.given ?? 0);
 
   await db.runAsync(
     `UPDATE people SET net_balance = ?, updated_at = ? WHERE id = ?`,
-    [netBalance, new Date().toISOString(), personId]
+    netBalance, new Date().toISOString(), personId
   );
 
   return netBalance;
@@ -123,7 +123,7 @@ export async function deletePerson(id: string): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
     `UPDATE people SET is_deleted = 1, updated_at = ? WHERE id = ?`,
-    [new Date().toISOString(), id]
+    new Date().toISOString(), id
   );
 }
 
@@ -168,6 +168,6 @@ export async function checkDuplicateName(name: string, excludeId?: string): Prom
     ? `SELECT COUNT(*) as count FROM people WHERE LOWER(name) = LOWER(?) AND is_deleted = 0 AND id != ?`
     : `SELECT COUNT(*) as count FROM people WHERE LOWER(name) = LOWER(?) AND is_deleted = 0`;
   const args = excludeId ? [name, excludeId] : [name];
-  const result = await db.getFirstAsync<{ count: number }>(query, args);
+  const result = await db.getFirstAsync<{ count: number }>(query, ...args);
   return (result?.count ?? 0) > 0;
 }

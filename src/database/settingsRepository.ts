@@ -12,7 +12,7 @@ async function getSetting(key: string): Promise<string | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ value: string }>(
     `SELECT value FROM app_settings WHERE key = ?`,
-    [key]
+    key
   );
   return row?.value ?? null;
 }
@@ -21,7 +21,7 @@ async function setSetting(key: string, value: string): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
     `INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`,
-    [key, value]
+    key, value
   );
 }
 
