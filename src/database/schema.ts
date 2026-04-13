@@ -1,12 +1,20 @@
 import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-import { Platform } from 'react-native';
-
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!db) {
-    const instance = await SQLite.openDatabaseAsync('udharo_v2.db');
+    let instance: SQLite.SQLiteDatabase;
+    try {
+      instance = await SQLite.openDatabaseAsync('udharo_v2.db');
+    } catch (openError) {
+      // OPFS (Origin Private File System) is unavailable — likely missing
+      // Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy headers.
+      // Fall back to an in-memory database so the app can still run.
+      console.warn('OPFS unavailable, falling back to :memory: database:', openError);
+      instance = await SQLite.openDatabaseAsync(':memory:');
+    }
     try {
       await initializeSchema(instance);
       db = instance;
@@ -19,21 +27,21 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   return db;
 }
 
-export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void> {
-  // NOTE: expo-sqlite on web uses a SQLite WASM worker that does NOT support
-  // multiple statements in a single execAsync call (throws Error Code 21 / SQLITE_MISUSE).
-  // Every statement MUST be its own execAsync call.
-
+export async function initializeSchema(database: SQLite.SQLiteDatabase): Promise<void> {
+  // On web, expo-sqlite uses a SQLite WASM worker (wa-sqlite + AccessHandlePoolVFS).
+  // PRAGMA statements can trigger Error Code 21 (SQLITE_MISUSE) in the WASM worker,
+  // so we skip them entirely on web — they are performance hints only and not
+  // required for correctness.
   if (Platform.OS !== 'web') {
-    await db.execAsync(`PRAGMA journal_mode = WAL;`);
-    await db.execAsync(`PRAGMA foreign_keys = ON;`);
-  } else {
-    await db.execAsync(`PRAGMA journal_mode = MEMORY;`);
-    await db.execAsync(`PRAGMA temp_store = MEMORY;`);
+    await database.execAsync(`PRAGMA journal_mode = WAL;`);
+    await database.execAsync(`PRAGMA foreign_keys = ON;`);
   }
 
+  // Each CREATE TABLE/INDEX must be its own execAsync call on web.
+  // The WASM worker processes one statement at a time.
+
   // People table
-  await db.execAsync(`
+  await database.execAsync(`
     CREATE TABLE IF NOT EXISTS people (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -48,7 +56,7 @@ export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void>
   `);
 
   // Transactions table
-  await db.execAsync(`
+  await database.execAsync(`
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY,
       person_id TEXT NOT NULL,
@@ -67,7 +75,7 @@ export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void>
   `);
 
   // Attachments table
-  await db.execAsync(`
+  await database.execAsync(`
     CREATE TABLE IF NOT EXISTS attachments (
       id TEXT PRIMARY KEY,
       transaction_id TEXT NOT NULL,
@@ -81,7 +89,7 @@ export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void>
   `);
 
   // Reminders table
-  await db.execAsync(`
+  await database.execAsync(`
     CREATE TABLE IF NOT EXISTS reminders (
       id TEXT PRIMARY KEY,
       person_id TEXT NOT NULL,
@@ -97,34 +105,32 @@ export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void>
   `);
 
   // App settings key-value store
-  await db.execAsync(`
+  await database.execAsync(`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
       value TEXT
     );
   `);
 
-  // Indexes — each must be its own call on web
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_transactions_person ON transactions(person_id);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_transactions_not_deleted ON transactions(is_deleted);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_attachments_transaction ON attachments(transaction_id);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_reminders_person ON reminders(person_id);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_reminders_status ON reminders(status);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_people_not_deleted ON people(is_deleted);`);
+  // Indexes — each is its own call (required on web)
+  await database.execAsync(`CREATE INDEX IF NOT EXISTS idx_transactions_person ON transactions(person_id);`);
+  await database.execAsync(`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);`);
+  await database.execAsync(`CREATE INDEX IF NOT EXISTS idx_transactions_not_deleted ON transactions(is_deleted);`);
+  await database.execAsync(`CREATE INDEX IF NOT EXISTS idx_attachments_transaction ON attachments(transaction_id);`);
+  await database.execAsync(`CREATE INDEX IF NOT EXISTS idx_reminders_person ON reminders(person_id);`);
+  await database.execAsync(`CREATE INDEX IF NOT EXISTS idx_reminders_status ON reminders(status);`);
+  await database.execAsync(`CREATE INDEX IF NOT EXISTS idx_people_not_deleted ON people(is_deleted);`);
 
-
-  // Migrations for existing databases
+  // Migrations for existing databases — errors are ignored (column already exists)
   const migrations = [
     `ALTER TABLE people ADD COLUMN notes TEXT;`,
     `ALTER TABLE transactions ADD COLUMN tag TEXT;`,
   ];
-
   for (const migration of migrations) {
     try {
-      await db.execAsync(migration);
+      await database.execAsync(migration);
     } catch (e) {
-      // Column likely already exists — safe to ignore
+      // safe to ignore: column already exists
     }
   }
 }
