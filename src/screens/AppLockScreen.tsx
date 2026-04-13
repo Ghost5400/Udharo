@@ -33,6 +33,9 @@ export function AppLockScreen({ navigation, route }: Props) {
   const [stage, setStage] = useState<'enter' | 'confirm'>('enter');
   const [error, setError] = useState('');
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  // useRef so the entered PIN is synchronously readable in the confirm stage
+  // (React state updates are async — reading 'pin' in handleSubmit would see stale value)
+  const pinRef = useRef('');
 
   const isSetup = mode === 'setup' || mode === 'change';
   const title = isSetup
@@ -78,16 +81,19 @@ export function AppLockScreen({ navigation, route }: Props) {
   const handleSubmit = async (submittedPin: string) => {
     if (isSetup) {
       if (stage === 'enter') {
+        // Store synchronously in ref before moving to confirm stage
+        pinRef.current = submittedPin;
+        setPin_(submittedPin);
         setStage('confirm');
       } else {
-        // Confirm stage: check PINs match
-        if (submittedPin !== pin) {
+        // Compare against ref (always current) not state (may be stale)
+        if (submittedPin !== pinRef.current) {
           setError(t.pinMismatch);
           setConfirmPin('');
           shake();
         } else {
           // Save the PIN and enable app lock
-          await setPin(pin);
+          await setPin(pinRef.current);
           await setAppLock(true);
 
           Alert.alert('✅ ' + t.success, t.pinSet, [
@@ -96,10 +102,8 @@ export function AppLockScreen({ navigation, route }: Props) {
               onPress: () => {
                 const nav = navigation as any;
                 if (nav.canGoBack()) {
-                  // Settings context → go back to Settings
                   nav.goBack();
                 } else {
-                  // Onboarding context → navigate to Main
                   nav.replace('Main');
                 }
               },
