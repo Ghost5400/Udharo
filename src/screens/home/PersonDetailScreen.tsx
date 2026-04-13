@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  StatusBar, Alert, Image, SectionList, TextInput
+  StatusBar, Alert, Image, SectionList, TextInput, Platform
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../types';
@@ -49,7 +49,7 @@ export function PersonDetailScreen({ navigation, route }: Props) {
   const handleDelete = () => {
     Alert.alert(
       `Delete ${person?.name}?`,
-      'All their transactions will be hidden. This cannot be undone.',
+      'All their transactions will be removed. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -57,8 +57,11 @@ export function PersonDetailScreen({ navigation, route }: Props) {
           style: 'destructive',
           onPress: async () => {
             await deletePerson(personId);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            navigation.goBack();
+            if (Platform.OS !== 'web') {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            }
+            // Navigate to Home — goBack() would land on the deleted person's screen
+            navigation.popToTop();
           },
         },
       ]

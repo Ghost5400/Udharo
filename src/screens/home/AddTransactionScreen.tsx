@@ -11,6 +11,7 @@ import { useTransactionsStore, usePeopleStore } from '../../store';
 import { todayISO } from '../../utils/helpers';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import * as Haptics from 'expo-haptics';
 // expo-av is not supported on web and is deprecated — only import on native
 const AudioModule = Platform.OS !== 'web' ? require('expo-av').Audio : null;
@@ -36,8 +37,20 @@ async function persistFile(tempUri: string, folder: string, prefix: string): Pro
     await (FileSystem as any).copyAsync({ from: tempUri, to: destUri });
     return destUri;
   } catch {
-    // Fall back to original URI if copy fails
     return tempUri;
+  }
+}
+
+// ─── Save image/video to device gallery (Android & iOS) ──────────────────────
+async function saveToDeviceGallery(uri: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status === 'granted') {
+      await MediaLibrary.saveToLibraryAsync(uri);
+    }
+  } catch {
+    // Non-fatal — app still works without gallery save
   }
 }
 
@@ -88,8 +101,10 @@ export function AddTransactionScreen({ navigation, route }: Props) {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       try {
-        // Persist to permanent storage so URI survives app restarts
+        // Persist to permanent internal storage (survives app restarts)
         const persistedUri = await persistFile(asset.uri, 'proof_images', 'img');
+        // Also save to device gallery for user access outside the app
+        await saveToDeviceGallery(persistedUri);
         setAttachments(prev => [...prev, {
           type: 'IMAGE', fileUri: persistedUri,
           mimeType: asset.mimeType ?? 'image/jpeg', fileSize: asset.fileSize,
@@ -114,11 +129,19 @@ export function AddTransactionScreen({ navigation, route }: Props) {
         setRecording(null);
         setIsRecording(false);
         if (uri) {
-          // Persist voice note to permanent storage
+          // Persist voice note to permanent internal storage
           const persistedUri = await persistFile(uri, 'proof_audio', 'voice');
+          // Save audio to device storage (Android Files/Downloads)
+          if (Platform.OS !== 'web') {
+            try {
+              const { status } = await MediaLibrary.requestPermissionsAsync();
+              if (status === 'granted') {
+                await MediaLibrary.saveToLibraryAsync(persistedUri);
+              }
+            } catch { /* non-fatal */ }
+          }
           setAttachments(prev => [...prev, { type: 'AUDIO', fileUri: persistedUri, mimeType: 'audio/m4a' }]);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Alert.alert('✅ Voice note added', `${attachments.length + 1} attachment(s) total`);
         }
       } catch (e: any) {
         Alert.alert('Error', e.message);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Image, Alert, StatusBar,
+  ScrollView, Image, Alert, StatusBar, Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../types';
@@ -11,6 +11,7 @@ import { usePeopleStore } from '../../store';
 import { checkDuplicateName } from '../../database/peopleRepository';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -55,6 +56,13 @@ export function AddPersonScreen({ navigation, route }: Props) {
       if (!result.canceled && result.assets[0]) {
         const persistent = await persistPhoto(result.assets[0].uri);
         setPhotoUri(persistent);
+        // Save to device gallery
+        if (Platform.OS !== 'web') {
+          try {
+            const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
+            if (mlStatus === 'granted') await MediaLibrary.saveToLibraryAsync(persistent);
+          } catch { /* non-fatal */ }
+        }
       }
     } catch (e: any) {
       Alert.alert('Error', e.message);
@@ -74,6 +82,13 @@ export function AddPersonScreen({ navigation, route }: Props) {
       if (!result.canceled && result.assets[0]) {
         const persistent = await persistPhoto(result.assets[0].uri);
         setPhotoUri(persistent);
+        // Save to device gallery
+        if (Platform.OS !== 'web') {
+          try {
+            const { status: mlStatus } = await MediaLibrary.requestPermissionsAsync();
+            if (mlStatus === 'granted') await MediaLibrary.saveToLibraryAsync(persistent);
+          } catch { /* non-fatal */ }
+        }
       }
     } catch (e: any) {
       Alert.alert('Error', e.message);

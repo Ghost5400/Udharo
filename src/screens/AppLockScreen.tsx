@@ -97,10 +97,12 @@ export function AppLockScreen({ navigation, route }: Props) {
           await setAppLock(true);
 
           const nav = navigation as any;
-          if (nav.canGoBack()) {
+          if (mode === 'change') {
+            // Changing PIN from settings — just go back
             nav.goBack();
           } else {
-            nav.replace('Main');
+            // First-time setup — show language selection before entering app
+            nav.replace('LanguageSetup');
           }
         }
       }

@@ -30,6 +30,7 @@ import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { LanguageScreen } from '../screens/settings/LanguageScreen';
 import { AboutScreen } from '../screens/settings/AboutScreen';
 import { BackupRestoreScreen } from '../screens/settings/BackupRestoreScreen';
+import { LanguageSetupScreen } from '../screens/settings/LanguageSetupScreen';
 
 const Root = createNativeStackNavigator<RootStackParamList>();
 const Onboarding = createNativeStackNavigator<OnboardingStackParamList>();
@@ -141,6 +142,7 @@ export function AppNavigator() {
         <Root.Screen name="Splash" component={SplashScreen} />
         <Root.Screen name="Onboarding" component={OnboardingNavigator} />
         <Root.Screen name="AppLock" component={AppLockScreen} />
+        <Root.Screen name="LanguageSetup" component={LanguageSetupScreen} />
         <Root.Screen name="Main" component={MainNavigator} />
       </Root.Navigator>
     </NavigationContainer>

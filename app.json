@@ -19,6 +19,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Take photos as proof for transactions",
         "NSPhotoLibraryUsageDescription": "Attach photos from gallery as transaction proof",
+        "NSPhotoLibraryAddUsageDescription": "Save transaction proof photos to your photo library",
         "NSMicrophoneUsageDescription": "Record voice notes as proof for transactions",
         "NSContactsUsageDescription": "Pick contacts to quickly add people"
       }
@@ -33,6 +34,9 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
         "android.permission.RECORD_AUDIO",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
@@ -63,7 +67,15 @@
       ],
       "expo-av",
       "expo-local-authentication",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Udharo to save transaction proof photos to your gallery",
+          "savePhotosPermission": "Allow Udharo to save photos to your gallery",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
     ],
     "extra": {
       "eas": {

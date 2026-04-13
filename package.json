@@ -24,6 +24,7 @@
     "expo-haptics": "~55.0.14",
     "expo-image-picker": "~55.0.18",
     "expo-local-authentication": "~55.0.13",
+    "expo-media-library": "~55.0.14",
     "expo-notifications": "~55.0.18",
     "expo-sharing": "~55.0.18",
     "expo-sqlite": "~55.0.15",

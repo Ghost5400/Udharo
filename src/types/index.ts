@@ -151,6 +151,7 @@ export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
   AppLock: { mode: 'setup' | 'verify' | 'change' };
+  LanguageSetup: undefined;
   Main: undefined;
 };
 
