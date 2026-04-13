@@ -89,7 +89,7 @@ interface TransactionsState {
 
   loadTransactions: (personId: string) => Promise<void>;
   addTransaction: (input: AddTransactionInput) => Promise<Transaction>;
-  updateTransaction: (id: string, personId: string, updates: Partial<Pick<Transaction, 'amount' | 'note' | 'date' | 'type'>>) => Promise<void>;
+  updateTransaction: (id: string, personId: string, updates: Partial<Pick<Transaction, 'amount' | 'note' | 'date' | 'type' | 'tag'>>) => Promise<void>;
   deleteTransaction: (id: string, personId: string) => Promise<void>;
   getAttachments: (transactionId: string) => Promise<Attachment[]>;
 }

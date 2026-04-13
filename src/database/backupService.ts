@@ -12,6 +12,7 @@ interface BackupData {
   people: any[];
   transactions: any[];
   attachments: any[];
+  reminders: any[];
   settings: any[];
 }
 
@@ -19,19 +20,21 @@ interface BackupData {
 export async function exportBackup(): Promise<string> {
   const db = await getDatabase();
 
-  const [people, transactions, attachments, settings] = await Promise.all([
+  const [people, transactions, attachments, reminders, settings] = await Promise.all([
     db.getAllAsync('SELECT * FROM people'),
     db.getAllAsync('SELECT * FROM transactions'),
     db.getAllAsync('SELECT * FROM attachments'),
+    db.getAllAsync('SELECT * FROM reminders'),
     db.getAllAsync('SELECT * FROM app_settings'),
   ]);
 
   const backup: BackupData = {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     people,
     transactions,
     attachments,
+    reminders,
     settings,
   };
 
@@ -78,7 +81,8 @@ export async function importBackup(fileUri: string): Promise<void> {
   const db = await getDatabase();
 
   await db.withTransactionAsync(async () => {
-    // Clear existing data
+    // Clear all existing data (in dependency order)
+    await db.runAsync('DELETE FROM reminders');
     await db.runAsync('DELETE FROM attachments');
     await db.runAsync('DELETE FROM transactions');
     await db.runAsync('DELETE FROM people');
@@ -96,9 +100,9 @@ export async function importBackup(fileUri: string): Promise<void> {
     for (const t of backup.transactions) {
       await db.runAsync(
         `INSERT OR REPLACE INTO transactions
-         (id, person_id, type, amount, note, date, status, settled_amount, created_at, updated_at, is_deleted)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [t.id, t.person_id, t.type, t.amount, t.note, t.date, t.status, t.settled_amount, t.created_at, t.updated_at, t.is_deleted]
+         (id, person_id, type, amount, note, date, status, settled_amount, tag, created_at, updated_at, is_deleted)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [t.id, t.person_id, t.type, t.amount, t.note, t.date, t.status, t.settled_amount, t.tag ?? null, t.created_at, t.updated_at, t.is_deleted]
       );
     }
 
@@ -108,6 +112,24 @@ export async function importBackup(fileUri: string): Promise<void> {
         `INSERT OR REPLACE INTO attachments (id, transaction_id, type, file_uri, mime_type, file_size, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [a.id, a.transaction_id, a.type, a.file_uri, a.mime_type, a.file_size, a.created_at]
+      );
+    }
+
+    // Restore reminders (added in v2)
+    for (const r of backup.reminders ?? []) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO reminders (id, person_id, transaction_id, remind_at, message, status, notification_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [r.id, r.person_id, r.transaction_id ?? null, r.remind_at, r.message ?? null, r.status, r.notification_id ?? null, r.created_at]
+      );
+    }
+
+    // Restore settings (skip sensitive keys like appPin for security)
+    for (const s of backup.settings ?? []) {
+      if (s.key === 'appPin') continue; // Never restore PIN from backup
+      await db.runAsync(
+        `INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`,
+        [s.key, s.value]
       );
     }
   });

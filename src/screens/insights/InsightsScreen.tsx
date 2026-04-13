@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Platform, Image, Alert,
 } from 'react-native';
-import { MainTabParamList, HomeStackParamList } from '../../types';
+import { MainTabParamList } from '../../types';
 import { Colors, DarkColors } from '../../constants/colors';
 import { BorderRadius, Shadow } from '../../constants/theme';
 import {
@@ -14,8 +14,6 @@ import {
 } from '../../utils/helpers';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { CompositeScreenProps } from '@react-navigation/native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../context/ThemeContext';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
@@ -23,10 +21,7 @@ import * as FileSystem from 'expo-file-system';
 const LOGO_WHITE_BG = require('../../../assets/UDHARO LOGO (WHITE BG).png');
 const LOGO_BLACK_BG = require('../../../assets/UDHARO LOGO (BLACK BG).png');
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, 'InsightsTab'>,
-  NativeStackScreenProps<HomeStackParamList>
->;
+type Props = BottomTabScreenProps<MainTabParamList, 'InsightsTab'>;
 
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 68;
 
@@ -56,7 +51,7 @@ export function InsightsScreen({ navigation }: Props) {
     const max = Math.max(...sorted.map(s => s[1]), 1);
     const chartBars = sorted.map(s => ({ val: s[1] / max, date: s[0] }));
 
-    // Settlement rate (settled / total transactions from recent)
+    // Settlement rate
     const totalTx = recent.length;
     const settledTx = recent.filter(tx => tx.status === 'SETTLED').length;
     const settlementRate = totalTx > 0 ? Math.round((settledTx / totalTx) * 100) : 0;
@@ -75,7 +70,9 @@ export function InsightsScreen({ navigation }: Props) {
       netBalance: balance.netBalance,
       pending: Math.abs(balance.totalGiven - balance.totalReceived),
       topPending,
-      chartBars: chartBars.length > 0 ? chartBars : [0.4, 0.65, 0.3, 0.9, 0.55, 0.45].map((v, i) => ({ val: v, date: '' })),
+      chartBars: chartBars.length > 0
+        ? chartBars
+        : [0.4, 0.65, 0.3, 0.9, 0.55, 0.45].map((v) => ({ val: v, date: '' })),
       settlementRate,
       healthScore,
       recentTxns: recent,
@@ -122,6 +119,14 @@ export function InsightsScreen({ navigation }: Props) {
 
   const health = healthLabel(data.healthScore);
 
+  // Navigate to a person's detail in the HomeTab stack
+  const goToPersonDetail = (personId: string) => {
+    navigation.navigate('HomeTab' as any, {
+      screen: 'PersonDetail',
+      params: { personId },
+    } as any);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: C.surface }}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.surfaceContainerLowest} />
@@ -142,7 +147,8 @@ export function InsightsScreen({ navigation }: Props) {
             onPress={handleExportReport}
             disabled={exporting}
           >
-            <MaterialIcons name="ios-share" size={20} color={C.primary} />
+            {/* Fixed: 'ios-share' is not a valid MaterialIcons name — use 'share' */}
+            <MaterialIcons name="share" size={20} color={C.primary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.refreshBtn, { backgroundColor: C.surfaceContainerLow }]}
@@ -257,7 +263,7 @@ export function InsightsScreen({ navigation }: Props) {
                   <TouchableOpacity
                     key={p.personId}
                     style={[styles.pendingRow, { backgroundColor: C.surfaceContainerLowest }]}
-                    onPress={() => navigation.navigate('PersonDetail', { personId: p.personId })}
+                    onPress={() => goToPersonDetail(p.personId)}
                   >
                     <View style={[styles.pendingAvatar, { backgroundColor: av.bg }]}>
                       <Text style={[styles.pendingInitials, { color: av.text }]}>{getInitials(p.name)}</Text>

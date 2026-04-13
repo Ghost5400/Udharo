@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Colors } from '../constants/colors';
+import { Colors, DarkColors, ThemeColors } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 
 import { Transaction, Attachment } from '../types';
 import { formatCurrency, formatDateShort } from '../utils/helpers';
@@ -22,11 +23,16 @@ function getTransactionIcon(note?: string) {
 }
 
 export function TransactionItem({ transaction, onPress }: TransactionItemProps) {
+  const { isDark } = useTheme();
+  const C = isDark ? DarkColors : Colors;
+
   const isGive = transaction.type === 'GIVE';
-  const amountColor = isGive ? Colors.given : Colors.received;
-  const statusColor = transaction.status === 'PENDING' ? Colors.given : Colors.received;
+  const amountColor = isGive ? C.given : C.received;
+  const statusColor = transaction.status === 'PENDING' ? C.given : C.received;
   const iconName = getTransactionIcon(transaction.note);
   const hasAttachment = (transaction.attachments?.length ?? 0) > 0;
+
+  const styles = makeStyles(C);
 
   return (
     <TouchableOpacity
@@ -36,7 +42,7 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
       disabled={!onPress}
     >
       {/* Icon */}
-      <View style={[styles.iconBox, { backgroundColor: Colors.surfaceContainerHighest }]}>
+      <View style={styles.iconBox}>
         <MaterialIcons name={iconName as any} size={22} color={amountColor} />
       </View>
 
@@ -49,7 +55,7 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
           <Text style={styles.date}>{formatDateShort(transaction.date)}</Text>
           {hasAttachment && (
             <View style={styles.attachBadge}>
-              <MaterialIcons name="attach-file" size={10} color={Colors.primary} />
+              <MaterialIcons name="attach-file" size={10} color={C.primary} />
             </View>
           )}
         </View>
@@ -72,61 +78,64 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  details: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.onSurface,
-    marginBottom: 4,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  date: {
-    fontSize: 12,
-    color: Colors.onSurfaceVariant,
-  },
-  attachBadge: {
-    backgroundColor: `${Colors.primary}18`,
-    borderRadius: 4,
-    padding: 2,
-  },
-  amountCol: {
-    alignItems: 'flex-end',
-    marginLeft: 8,
-  },
-  amount: {
-    fontSize: 17,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 20,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-});
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 4,
+    },
+    iconBox: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: C.surfaceContainerHighest,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+    },
+    details: {
+      flex: 1,
+    },
+    title: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: C.onSurface,
+      marginBottom: 4,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    date: {
+      fontSize: 12,
+      color: C.onSurfaceVariant,
+    },
+    attachBadge: {
+      backgroundColor: `${C.primary}18`,
+      borderRadius: 4,
+      padding: 2,
+    },
+    amountCol: {
+      alignItems: 'flex-end',
+      marginLeft: 8,
+    },
+    amount: {
+      fontSize: 17,
+      fontWeight: '800',
+      marginBottom: 4,
+    },
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 20,
+    },
+    statusText: {
+      fontSize: 10,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+  });
+}

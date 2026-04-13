@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Person } from '../types';
-import { Colors, DarkColors } from '../constants/colors';
+import { Colors, DarkColors, ThemeColors } from '../constants/colors';
 import { BorderRadius } from '../constants/theme';
 import { formatCurrency, getInitials, getAvatarColor, isSettled } from '../utils/helpers';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -25,9 +25,11 @@ export function PersonCard({ person, onPress }: Props) {
   const balanceColor = settled ? C.onSurfaceVariant : isOweYou ? C.given : C.received;
   const balanceLabel = settled ? 'Settled' : isOweYou ? 'Owes you' : 'You owe';
 
+  const styles = makeStyles(C);
+
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: C.surfaceContainerLowest }]}
+      style={styles.card}
       onPress={onPress}
       activeOpacity={0.75}
     >
@@ -62,25 +64,28 @@ export function PersonCard({ person, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: BorderRadius['2xl'], padding: 14, gap: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
-  },
-  avatarWrap: { position: 'relative' },
-  avatar: { width: 52, height: 52, borderRadius: 16 },
-  avatarFallback: { alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 18, fontWeight: '800' },
-  statusDot: {
-    position: 'absolute', bottom: -2, right: -2,
-    width: 12, height: 12, borderRadius: 6,
-    borderWidth: 2, borderColor: '#fff',
-  },
-  info: { flex: 1, gap: 3 },
-  name: { fontSize: 15, fontWeight: '700' },
-  balanceLabel: { fontSize: 12, fontWeight: '600' },
-  right: { alignItems: 'flex-end', flexDirection: 'row', gap: 4, alignSelf: 'center' },
-  amount: { fontSize: 16, fontWeight: '800' },
-});
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    card: {
+      flexDirection: 'row', alignItems: 'center',
+      borderRadius: BorderRadius['2xl'], padding: 14, gap: 12,
+      backgroundColor: C.surfaceContainerLowest,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    },
+    avatarWrap: { position: 'relative' },
+    avatar: { width: 52, height: 52, borderRadius: 16 },
+    avatarFallback: { alignItems: 'center', justifyContent: 'center' },
+    avatarText: { fontSize: 18, fontWeight: '800' },
+    statusDot: {
+      position: 'absolute', bottom: -2, right: -2,
+      width: 12, height: 12, borderRadius: 6,
+      borderWidth: 2, borderColor: C.surfaceContainerLowest,
+    },
+    info: { flex: 1, gap: 3 },
+    name: { fontSize: 15, fontWeight: '700' },
+    balanceLabel: { fontSize: 12, fontWeight: '600' },
+    right: { alignItems: 'flex-end', flexDirection: 'row', gap: 4, alignSelf: 'center' },
+    amount: { fontSize: 16, fontWeight: '800' },
+  });
+}

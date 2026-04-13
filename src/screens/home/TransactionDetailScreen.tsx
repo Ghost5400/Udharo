@@ -138,12 +138,12 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
             </View>
           )}
 
-          {(transaction as any).tag && (
+          {transaction.tag && (
             <View style={styles.infoRow}>
               <MaterialIcons name="label" size={20} color={C.onSurfaceVariant} />
               <View style={styles.infoTextContainer}>
                 <Text style={[styles.infoLabel, { color: C.onSurfaceVariant }]}>Tag</Text>
-                <Text style={[styles.infoValue, { color: C.onSurface }]}>{(transaction as any).tag}</Text>
+                <Text style={[styles.infoValue, { color: C.onSurface }]}>{transaction.tag}</Text>
               </View>
             </View>
           )}

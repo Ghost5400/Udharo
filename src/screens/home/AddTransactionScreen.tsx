@@ -10,6 +10,7 @@ import { BorderRadius, Shadow } from '../../constants/theme';
 import { useTransactionsStore, usePeopleStore } from '../../store';
 import { todayISO } from '../../utils/helpers';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -18,6 +19,26 @@ import { useTheme } from '../../context/ThemeContext';
 type Props = NativeStackScreenProps<HomeStackParamList, 'AddTransaction'>;
 
 const QUICK_AMOUNTS = [100, 500, 1000, 5000];
+
+// ─── Persist media file to permanent app directory ───────────────────────────
+async function persistFile(tempUri: string, folder: string, prefix: string): Promise<string> {
+  const docDir: string = (FileSystem as any).documentDirectory ?? '';
+  const dir = `${docDir}${folder}/`;
+  const dirInfo = await (FileSystem as any).getInfoAsync(dir);
+  if (!dirInfo.exists) {
+    await (FileSystem as any).makeDirectoryAsync(dir, { intermediates: true });
+  }
+  const ext = tempUri.split('.').pop()?.split('?')[0] ?? 'jpg';
+  const filename = `${prefix}_${Date.now()}.${ext}`;
+  const destUri = `${dir}${filename}`;
+  try {
+    await (FileSystem as any).copyAsync({ from: tempUri, to: destUri });
+    return destUri;
+  } catch {
+    // Fall back to original URI if copy fails
+    return tempUri;
+  }
+}
 
 export function AddTransactionScreen({ navigation, route }: Props) {
   const { personId: routePersonId, type: routeType } = route.params ?? {};
@@ -61,15 +82,21 @@ export function AddTransactionScreen({ navigation, route }: Props) {
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') { Alert.alert('Gallery permission needed'); return; }
-      result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+      result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
     }
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      setAttachments(prev => [...prev, {
-        type: 'IMAGE', fileUri: asset.uri,
-        mimeType: asset.mimeType ?? 'image/jpeg', fileSize: asset.fileSize,
-      }]);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      try {
+        // Persist to permanent storage so URI survives app restarts
+        const persistedUri = await persistFile(asset.uri, 'proof_images', 'img');
+        setAttachments(prev => [...prev, {
+          type: 'IMAGE', fileUri: persistedUri,
+          mimeType: asset.mimeType ?? 'image/jpeg', fileSize: asset.fileSize,
+        }]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (e: any) {
+        Alert.alert('Error saving image', e.message);
+      }
     }
   };
 
@@ -82,7 +109,9 @@ export function AddTransactionScreen({ navigation, route }: Props) {
         setRecording(null);
         setIsRecording(false);
         if (uri) {
-          setAttachments(prev => [...prev, { type: 'AUDIO', fileUri: uri, mimeType: 'audio/m4a' }]);
+          // Persist voice note to permanent storage
+          const persistedUri = await persistFile(uri, 'proof_audio', 'voice');
+          setAttachments(prev => [...prev, { type: 'AUDIO', fileUri: persistedUri, mimeType: 'audio/m4a' }]);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           Alert.alert('✅ Voice note added', `${attachments.length + 1} attachment(s) total`);
         }

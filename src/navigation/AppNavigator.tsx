@@ -30,7 +30,6 @@ import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { LanguageScreen } from '../screens/settings/LanguageScreen';
 import { AboutScreen } from '../screens/settings/AboutScreen';
 import { BackupRestoreScreen } from '../screens/settings/BackupRestoreScreen';
-import { AppLockScreen as AppLockSetupScreen } from '../screens/AppLockScreen';
 
 const Root = createNativeStackNavigator<RootStackParamList>();
 const Onboarding = createNativeStackNavigator<OnboardingStackParamList>();
@@ -76,15 +75,9 @@ function SettingsNavigator() {
       <SettingsStack.Screen name="BackupRestore" component={BackupRestoreScreen} />
       <SettingsStack.Screen
         name="AppLockSetup"
+        component={AppLockScreen}
         options={{ animation: 'slide_from_bottom' }}
-      >
-        {(props) => (
-          <AppLockSetupScreen
-            {...(props as any)}
-            route={{ ...props.route, params: { mode: props.route.params?.mode ?? 'setup' } }}
-          />
-        )}
-      </SettingsStack.Screen>
+      />
     </SettingsStack.Navigator>
   );
 }

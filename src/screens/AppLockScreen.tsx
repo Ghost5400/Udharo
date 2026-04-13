@@ -4,24 +4,30 @@ import {
   Animated, Alert, Vibration,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, SettingsStackParamList } from '../types';
 import { Colors, DarkColors, ThemeColors } from '../constants/colors';
 import { Shadow } from '../constants/theme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { setPin, verifyPin } from '../database/settingsRepository';
+import { setPin, verifyPin, setAppLock } from '../database/settingsRepository';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'AppLock'>;
+// AppLockScreen serves double duty:
+// 1. Root navigator: mode = 'setup' (after onboarding) | 'verify' (on app launch with PIN)
+// 2. Settings navigator: mode = 'setup' | 'change' (via AppLockSetup screen wrapper)
+type RootProps = NativeStackScreenProps<RootStackParamList, 'AppLock'>;
+type SettingsProps = NativeStackScreenProps<SettingsStackParamList, 'AppLockSetup'>;
+type Props = RootProps | SettingsProps;
 
 const PIN_LENGTH = 4;
 const DOTS = Array.from({ length: PIN_LENGTH });
 
 export function AppLockScreen({ navigation, route }: Props) {
-  const mode = route.params?.mode ?? 'verify';
+  const params = route.params as { mode?: 'setup' | 'verify' | 'change' } | undefined;
+  const mode = params?.mode ?? 'verify';
   const { isDark, t } = useTheme();
   const C = isDark ? DarkColors : Colors;
 
-  const [pin, setPin_ ] = useState('');
+  const [pin, setPin_] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [stage, setStage] = useState<'enter' | 'confirm'>('enter');
   const [error, setError] = useState('');
@@ -32,7 +38,9 @@ export function AppLockScreen({ navigation, route }: Props) {
     ? (stage === 'enter' ? 'Set a PIN' : 'Confirm PIN')
     : 'Enter PIN';
   const subtitle = isSetup
-    ? (stage === 'enter' ? 'Choose a 4-digit PIN to secure your app' : 'Re-enter your PIN to confirm')
+    ? (stage === 'enter'
+        ? (mode === 'change' ? 'Enter your new 4-digit PIN' : 'Choose a 4-digit PIN to secure your app')
+        : 'Re-enter your PIN to confirm')
     : 'Enter your PIN to continue';
 
   const currentPin = stage === 'confirm' ? confirmPin : pin;
@@ -49,14 +57,13 @@ export function AppLockScreen({ navigation, route }: Props) {
     ]).start();
   }
 
-  const handleDigit = async (digit: string) => {
+  const handleDigit = (digit: string) => {
     if (currentPin.length >= PIN_LENGTH) return;
     const next = currentPin + digit;
     setCurrentPin(next);
     setError('');
 
     if (next.length === PIN_LENGTH) {
-      // auto-submit
       setTimeout(() => handleSubmit(next), 100);
     }
   };
@@ -71,20 +78,27 @@ export function AppLockScreen({ navigation, route }: Props) {
       if (stage === 'enter') {
         setStage('confirm');
       } else {
+        // Confirm stage: check PINs match
         if (submittedPin !== pin) {
           setError(t.pinMismatch);
           setConfirmPin('');
           shake();
         } else {
+          // Save the PIN and enable app lock
           await setPin(pin);
+          await setAppLock(true);
+
           Alert.alert('✅ ' + t.success, t.pinSet, [
             {
-              text: t.ok, onPress: () => {
-                // Try goBack first (settings context), fallback to replace Main
-                if (navigation.canGoBack()) {
-                  navigation.goBack();
+              text: t.ok,
+              onPress: () => {
+                const nav = navigation as any;
+                if (nav.canGoBack()) {
+                  // Settings context → go back to Settings
+                  nav.goBack();
                 } else {
-                  navigation.replace('Main');
+                  // Onboarding context → navigate to Main
+                  nav.replace('Main');
                 }
               },
             },
@@ -92,9 +106,10 @@ export function AppLockScreen({ navigation, route }: Props) {
         }
       }
     } else {
+      // Verify mode: check PIN
       const ok = await verifyPin(submittedPin);
       if (ok) {
-        navigation.replace('Main');
+        (navigation as any).replace('Main');
       } else {
         setError(t.wrongPin);
         setPin_('');
@@ -107,13 +122,23 @@ export function AppLockScreen({ navigation, route }: Props) {
     Alert.alert('Forgot PIN', t.forgotPin);
   };
 
-  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
 
   const styles = makeStyles(C);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.surfaceContainerLowest} />
+
+      {/* Back button for settings context */}
+      {(navigation as any).canGoBack?.() && (
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => (navigation as any).goBack()}
+        >
+          <MaterialIcons name="arrow-back" size={24} color={C.onSurface} />
+        </TouchableOpacity>
+      )}
 
       {/* Logo */}
       <View style={styles.logoWrap}>
@@ -177,6 +202,11 @@ function makeStyles(C: ThemeColors) {
     container: {
       flex: 1, backgroundColor: C.surfaceContainerLowest,
       alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32,
+    },
+    backBtn: {
+      position: 'absolute', top: 52, left: 16,
+      width: 40, height: 40, borderRadius: 20,
+      alignItems: 'center', justifyContent: 'center',
     },
     logoWrap: { alignItems: 'center', marginBottom: 32 },
     logoCard: {

@@ -312,7 +312,7 @@ return StyleSheet.create({
   backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: C.primary, flex: 1, textAlign: 'center', marginHorizontal: 8 },
   headerRight: {},
-  headerAvatar: { width: 40, height: 40, borderRadius: 20 },
+  headerAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerAvatarText: { fontSize: 14, fontWeight: '800' },
 
   scroll: { paddingBottom: 40 },

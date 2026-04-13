@@ -168,7 +168,7 @@ export function HomeScreen({ navigation }: Props) {
 
       {/* ── FAB ── */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: C.primary, bottom: TAB_BAR_HEIGHT + 16 }]}
+        style={[styles.fab, { backgroundColor: C.primary, bottom: TAB_BAR_HEIGHT + 24 }]}
         onPress={() => navigation.navigate('AddPerson', {})}
         activeOpacity={0.85}
       >

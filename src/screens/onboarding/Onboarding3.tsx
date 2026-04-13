@@ -17,8 +17,18 @@ export function Onboarding3({ navigation }: Props) {
     } catch (e) {
       console.warn('Failed to set onboarding status', e);
     }
-    // Escape the Onboarding sub-stack up to the Root navigator and navigate to Main
-    navigation.getParent()?.navigate('Main' as never);
+    // Navigate to Root navigator and go to AppLock for PIN setup
+    // Using reset prevents back-swipe back to onboarding
+    const rootNav = navigation.getParent();
+    if (rootNav) {
+      rootNav.reset({
+        index: 0,
+        routes: [{ name: 'AppLock' as never, params: { mode: 'setup' } as never }],
+      });
+    } else {
+      // Fallback: navigate directly to Main if no parent
+      navigation.navigate('Onboarding1' as never);
+    }
   };
 
   return (
@@ -87,7 +97,7 @@ export function Onboarding3({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: Colors.surface },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingTop: 56, paddingBottom: 16, gap: 10,

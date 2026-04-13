@@ -22,6 +22,7 @@ function rowToTransaction(row: any): Transaction {
     date: row.date,
     status: row.status,
     settledAmount: row.settled_amount ?? 0,
+    tag: row.tag ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     isDeleted: row.is_deleted === 1,
@@ -93,11 +94,11 @@ export async function addTransaction(input: AddTransactionInput): Promise<Transa
   const now = new Date().toISOString();
 
   await db.withTransactionAsync(async () => {
-    // Insert transaction
+    // Insert transaction (now includes tag)
     await db.runAsync(
-      `INSERT INTO transactions (id, person_id, type, amount, note, date, status, settled_amount, created_at, updated_at, is_deleted)
-       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, 0)`,
-      [id, input.personId, input.type, input.amount, input.note ?? null, input.date, now, now]
+      `INSERT INTO transactions (id, person_id, type, amount, note, date, status, settled_amount, tag, created_at, updated_at, is_deleted)
+       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, 0)`,
+      [id, input.personId, input.type, input.amount, input.note ?? null, input.date, input.tag ?? null, now, now]
     );
 
     // Save attachments
@@ -126,19 +127,22 @@ async function saveAttachment(db: any, transactionId: string, att: AttachmentInp
     await FileSystem.makeDirectoryAsync(proofDir, { intermediates: true });
   }
 
-  const ext = att.fileUri.split('.').pop() ?? (att.type === 'IMAGE' ? 'jpg' : 'm4a');
+  const ext = att.fileUri.split('.').pop()?.split('?')[0] ?? (att.type === 'IMAGE' ? 'jpg' : 'm4a');
   const destUri = `${proofDir}${attId}.${ext}`;
 
+  let finalUri = att.fileUri; // default: use original URI as fallback
   try {
     await FileSystem.copyAsync({ from: att.fileUri, to: destUri });
+    finalUri = destUri; // only use dest if copy succeeded
   } catch {
-    // Use original URI if copy fails
+    // Copy failed (e.g., already in sandbox or permissions issue) — keep original URI
+    console.warn('[Udharo] Attachment copy failed, using original URI:', att.fileUri);
   }
 
   await db.runAsync(
     `INSERT INTO attachments (id, transaction_id, type, file_uri, mime_type, file_size, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [attId, transactionId, att.type, destUri, att.mimeType ?? null, att.fileSize ?? null, now]
+    [attId, transactionId, att.type, finalUri, att.mimeType ?? null, att.fileSize ?? null, now]
   );
 }
 
@@ -155,7 +159,7 @@ export async function getAttachmentsForTransaction(transactionId: string): Promi
 // ─── Update Transaction ──────────────────────────────────────────────────────
 export async function updateTransaction(
   id: string,
-  updates: Partial<Pick<Transaction, 'amount' | 'note' | 'date' | 'type'>>
+  updates: Partial<Pick<Transaction, 'amount' | 'note' | 'date' | 'type' | 'tag'>>
 ): Promise<Transaction> {
   const db = await getDatabase();
   const txn = await getTransactionById(id);
@@ -169,6 +173,7 @@ export async function updateTransaction(
   if (updates.note !== undefined) { fields.push('note = ?'); values.push(updates.note); }
   if (updates.date !== undefined) { fields.push('date = ?'); values.push(updates.date); }
   if (updates.type !== undefined) { fields.push('type = ?'); values.push(updates.type); }
+  if (updates.tag !== undefined) { fields.push('tag = ?'); values.push(updates.tag); }
 
   fields.push('updated_at = ?');
   values.push(now);

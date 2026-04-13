@@ -38,6 +38,7 @@ export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void>
       date TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PARTIAL', 'SETTLED')),
       settled_amount REAL DEFAULT 0,
+      tag TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       is_deleted INTEGER DEFAULT 0,
@@ -86,11 +87,18 @@ export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void>
     CREATE INDEX IF NOT EXISTS idx_people_not_deleted ON people(is_deleted);
   `);
 
-  // Simple migration to add notes if people table already exists without it
-  try {
-    await db.execAsync(`ALTER TABLE people ADD COLUMN notes TEXT;`);
-  } catch (e) {
-    // Column likely already exists
+  // Migrations for existing databases
+  const migrations = [
+    `ALTER TABLE people ADD COLUMN notes TEXT;`,
+    `ALTER TABLE transactions ADD COLUMN tag TEXT;`,
+  ];
+
+  for (const migration of migrations) {
+    try {
+      await db.execAsync(migration);
+    } catch (e) {
+      // Column likely already exists — safe to ignore
+    }
   }
 }
 
