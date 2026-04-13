@@ -118,13 +118,13 @@ function makeStyles(C: ThemeColors) {
     },
     searchInput: { flex: 1, fontSize: 15 },
   
-    scroll: { padding: 20, paddingBottom: 100 },
+    scroll: { padding: 20, paddingBottom: 32 },
     peopleList: { gap: 12 },
   
     fab: {
       position: 'absolute',
       right: 24,
-      bottom: 40,
+      bottom: 24,
       width: 62,
       height: 62,
       borderRadius: 18,

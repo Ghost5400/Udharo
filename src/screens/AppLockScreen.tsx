@@ -92,23 +92,16 @@ export function AppLockScreen({ navigation, route }: Props) {
           setConfirmPin('');
           shake();
         } else {
-          // Save the PIN and enable app lock
+          // Save the PIN and enable app lock, then navigate immediately
           await setPin(pinRef.current);
           await setAppLock(true);
 
-          Alert.alert('✅ ' + t.success, t.pinSet, [
-            {
-              text: t.ok,
-              onPress: () => {
-                const nav = navigation as any;
-                if (nav.canGoBack()) {
-                  nav.goBack();
-                } else {
-                  nav.replace('Main');
-                }
-              },
-            },
-          ]);
+          const nav = navigation as any;
+          if (nav.canGoBack()) {
+            nav.goBack();
+          } else {
+            nav.replace('Main');
+          }
         }
       }
     } else {

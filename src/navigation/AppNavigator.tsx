@@ -149,7 +149,6 @@ export function AppNavigator() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    position: 'absolute',
     borderTopWidth: 0.5,
     height: Platform.OS === 'ios' ? 88 : 68,
     paddingBottom: Platform.OS === 'ios' ? 28 : 10,

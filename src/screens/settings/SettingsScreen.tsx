@@ -200,7 +200,7 @@ function makeStyles(C: ThemeColors) {
     brandLogo: { width: 34, height: 34, borderRadius: 10 },
     brandName: { fontSize: 20, fontWeight: '900', letterSpacing: 0.5 },
 
-    scroll: { padding: 20, gap: 8, paddingBottom: 100 },
+    scroll: { padding: 20, gap: 8, paddingBottom: 48 },
     pageTitle: { gap: 4, marginBottom: 12 },
     pageTitleText: { fontSize: 36, fontWeight: '800' },
     pageTitleSub: { fontSize: 13 },

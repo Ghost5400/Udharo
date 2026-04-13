@@ -18,8 +18,6 @@ const LOGO_BLACK_BG = require('../../../assets/UDHARO LOGO (BLACK BG).png');
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
 
-const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 68;
-
 export function HomeScreen({ navigation }: Props) {
   const { people, globalBalance, loadPeople } = usePeopleStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -96,7 +94,7 @@ export function HomeScreen({ navigation }: Props) {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + 24 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 24 }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} colors={[C.primary]} />}
         showsVerticalScrollIndicator={false}
       >
@@ -168,7 +166,7 @@ export function HomeScreen({ navigation }: Props) {
 
       {/* ── FAB ── */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: C.primary, bottom: TAB_BAR_HEIGHT + 24 }]}
+        style={[styles.fab, { backgroundColor: C.primary, bottom: 24 }]}
         onPress={() => navigation.navigate('AddPerson', {})}
         activeOpacity={0.85}
       >
