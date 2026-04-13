@@ -6,12 +6,13 @@ import { Platform } from 'react-native';
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!db) {
-    const instance = await SQLite.openDatabaseAsync('udharo.db');
+    const instance = await SQLite.openDatabaseAsync('udharo_v2.db');
     try {
       await initializeSchema(instance);
       db = instance;
     } catch (error) {
       console.error('Schema initialization failed:', error);
+      try { await instance.closeAsync(); } catch (e) {}
       throw error;
     }
   }
@@ -23,6 +24,11 @@ export async function initializeSchema(db: SQLite.SQLiteDatabase): Promise<void>
     await db.execAsync(`
       PRAGMA journal_mode = WAL;
       PRAGMA foreign_keys = ON;
+    `);
+  } else {
+    await db.execAsync(`
+      PRAGMA journal_mode = MEMORY;
+      PRAGMA temp_store = MEMORY;
     `);
   }
 
