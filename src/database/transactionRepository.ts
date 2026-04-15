@@ -137,7 +137,6 @@ async function saveAttachment(db: any, transactionId: string, att: AttachmentInp
       finalUri = destUri;
     } catch {
       // Copy failed (e.g., already in sandbox or permissions issue) — keep original URI
-      console.warn('[Udharo] Attachment copy failed, using original URI:', att.fileUri);
     }
   }
 

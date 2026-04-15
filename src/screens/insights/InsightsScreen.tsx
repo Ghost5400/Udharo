@@ -33,55 +33,64 @@ export function InsightsScreen({ navigation }: Props) {
   const [data, setData] = useState<any>(null);
   const [exporting, setExporting] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => { loadData(); }, [])
-  );
+  const loadData = useCallback(async () => {
+    try {
+      const [balance, topPending, recent] = await Promise.all([
+        getGlobalBalance(),
+        getTopPendingPeople(5),
+        getRecentTransactions(30),
+      ]);
 
+      // Build chart bars from last 6 days
+      const dayMap = new Map<string, number>();
+      for (const tx of recent) {
+        const day = tx.date.substring(0, 10);
+        dayMap.set(day, (dayMap.get(day) ?? 0) + tx.amount);
+      }
+      const sorted = [...dayMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-6);
+      const chartMax = Math.max(...sorted.map(s => s[1]), 1);
+      const chartBars = sorted.map(s => ({ val: s[1] / chartMax, date: s[0] }));
 
-  const loadData = async () => {
-    const [balance, topPending, recent] = await Promise.all([
-      getGlobalBalance(),
-      getTopPendingPeople(5),
-      getRecentTransactions(30),
-    ]);
+      // Settlement rate
+      const totalTx = recent.length;
+      const settledTx = recent.filter(tx => tx.status === 'SETTLED').length;
+      const settlementRate = totalTx > 0 ? Math.round((settledTx / totalTx) * 100) : 0;
 
-    // Build chart bars from last 6 days
-    const dayMap = new Map<string, number>();
-    for (const tx of recent) {
-      const day = tx.date.substring(0, 10);
-      dayMap.set(day, (dayMap.get(day) ?? 0) + tx.amount);
+      // Debt health score (0-100)
+      const given = balance.totalGiven;
+      const received = balance.totalReceived;
+      const total = given + received;
+      const healthScore = total > 0
+        ? Math.min(100, Math.round((received / total) * 100))
+        : 100;
+
+      // Received progress percentage (real data — was hardcoded 72%)
+      const receivedPct = total > 0
+        ? `${Math.round((received / total) * 100)}%`
+        : '0%';
+
+      setData({
+        totalGiven: balance.totalGiven,
+        totalReceived: balance.totalReceived,
+        netBalance: balance.netBalance,
+        pending: Math.abs(balance.totalGiven - balance.totalReceived),
+        topPending,
+        chartBars: chartBars.length > 0
+          ? chartBars
+          : [0.4, 0.65, 0.3, 0.9, 0.55, 0.45].map((v) => ({ val: v, date: '' })),
+        settlementRate,
+        healthScore,
+        recentTxns: recent,
+        receivedPct,
+      });
+    } catch {
+      // DB failed — keep showing last data (or null → loading placeholder)
     }
-    const sorted = [...dayMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-6);
-    const max = Math.max(...sorted.map(s => s[1]), 1);
-    const chartBars = sorted.map(s => ({ val: s[1] / max, date: s[0] }));
+  }, []);
 
-    // Settlement rate
-    const totalTx = recent.length;
-    const settledTx = recent.filter(tx => tx.status === 'SETTLED').length;
-    const settlementRate = totalTx > 0 ? Math.round((settledTx / totalTx) * 100) : 0;
-
-    // Debt health score (0-100)
-    const given = balance.totalGiven;
-    const received = balance.totalReceived;
-    const total = given + received;
-    const healthScore = total > 0
-      ? Math.min(100, Math.round((received / total) * 100))
-      : 100;
-
-    setData({
-      totalGiven: balance.totalGiven,
-      totalReceived: balance.totalReceived,
-      netBalance: balance.netBalance,
-      pending: Math.abs(balance.totalGiven - balance.totalReceived),
-      topPending,
-      chartBars: chartBars.length > 0
-        ? chartBars
-        : [0.4, 0.65, 0.3, 0.9, 0.55, 0.45].map((v) => ({ val: v, date: '' })),
-      settlementRate,
-      healthScore,
-      recentTxns: recent,
-    });
-  };
+  useFocusEffect(
+    useCallback(() => { loadData(); }, [loadData])
+  );
 
   const handleExportReport = async () => {
     if (!data?.recentTxns) return;
@@ -186,7 +195,7 @@ export function InsightsScreen({ navigation }: Props) {
             <Text style={[styles.bentoLabel, { color: C.onSurfaceVariant }]}>{t.totalReceived}</Text>
             <Text style={[styles.bentoValue, { color: C.received }]}>{formatAmount(data.totalReceived)}</Text>
             <View style={[styles.progressBar, { backgroundColor: C.surfaceContainerHigh }]}>
-              <View style={[styles.progressFill, { width: '72%', backgroundColor: C.received }]} />
+              <View style={[styles.progressFill, { width: data.receivedPct, backgroundColor: C.received }]} />
             </View>
           </View>
 

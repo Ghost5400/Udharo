@@ -85,9 +85,6 @@ export function HomeScreen({ navigation }: Props) {
               <TouchableOpacity style={[styles.iconBtn, { backgroundColor: C.surfaceContainerLow }]} onPress={() => setShowSearch(true)}>
                 <MaterialIcons name="search" size={22} color={C.onSurfaceVariant} />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.notifBtn, { backgroundColor: C.surfaceContainerLow }]} onPress={() => {}}>
-                <MaterialIcons name="notifications-none" size={22} color={C.onSurfaceVariant} />
-              </TouchableOpacity>
             </View>
           </>
         )}

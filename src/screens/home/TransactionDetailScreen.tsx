@@ -40,8 +40,8 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
         const atts = await getAttachments(transactionId);
         setAttachments(atts);
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // Non-fatal: transaction or attachments failed to load
     } finally {
       setLoading(false);
     }

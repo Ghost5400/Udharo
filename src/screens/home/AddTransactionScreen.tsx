@@ -13,10 +13,42 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Haptics from 'expo-haptics';
-// expo-av is not supported on web and is deprecated — only import on native
+// expo-av is used for both voice recording AND sound playback on native
 const AudioModule = Platform.OS !== 'web' ? require('expo-av').Audio : null;
+const { Sound } = Platform.OS !== 'web' ? require('expo-av') : { Sound: null };
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+
+// ─── Sound asset references ────────────────────────────────────────────────────
+const SOUNDS = {
+  withdraw: require('../../../assets/sounds/withdraw.mp3'),
+  deposit: require('../../../assets/sounds/deposit.mp3'),
+};
+
+// ─── Play a transaction sound (native: expo-av, web: HTML5 Audio) ─────────────
+async function playTransactionSound(type: 'GIVE' | 'RECEIVE'): Promise<void> {
+  const asset = type === 'GIVE' ? SOUNDS.withdraw : SOUNDS.deposit;
+  try {
+    if (Platform.OS === 'web') {
+      // Use the bundler-resolved URL for the web build
+      const url = type === 'GIVE'
+        ? require('../../../assets/sounds/withdraw.mp3')
+        : require('../../../assets/sounds/deposit.mp3');
+      const audio = new window.Audio(url);
+      audio.volume = 0.8;
+      audio.play().catch(() => {/* autoplay policy — silently ignore */});
+    } else {
+      // Native: use expo-av Sound
+      const { sound } = await Sound.createAsync(asset, { shouldPlay: true, volume: 0.8 });
+      // Auto-unload once playback finishes
+      sound.setOnPlaybackStatusUpdate((status: any) => {
+        if (status.didJustFinish) sound.unloadAsync();
+      });
+    }
+  } catch {
+    // Non-fatal — app still works without sound
+  }
+}
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'AddTransaction'>;
 
@@ -103,15 +135,16 @@ export function AddTransactionScreen({ navigation, route }: Props) {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       try {
-        // Persist to permanent internal storage (survives app restarts)
-        const persistedUri = await persistFile(asset.uri, 'proof_images', 'img');
-        // Also save to device gallery for user access outside the app
-        await saveToDeviceGallery(persistedUri);
+        // Save to device gallery (original temp URI is valid at this point)
+        await saveToDeviceGallery(asset.uri);
+        // Pass original URI — saveAttachment() in the repository will do the
+        // one permanent copy to documentDirectory/proof/. Doing it here too
+        // was causing every file to be stored twice (wasted storage).
         setAttachments(prev => [...prev, {
-          type: 'IMAGE', fileUri: persistedUri,
+          type: 'IMAGE', fileUri: asset.uri,
           mimeType: asset.mimeType ?? 'image/jpeg', fileSize: asset.fileSize,
         }]);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e: any) {
         Alert.alert('Error saving image', e.message);
       }
@@ -155,9 +188,12 @@ export function AddTransactionScreen({ navigation, route }: Props) {
           Alert.alert('Microphone permission needed', 'Please allow microphone access in Settings.');
           return;
         }
+        // iOS needs silent-mode override; Android ignores these flags safely
         await AudioModule.setAudioModeAsync({
           allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
+          playsInSilentModeIOS: Platform.OS === 'ios',
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
         });
         const { recording: rec } = await AudioModule.Recording.createAsync(
           AudioModule.RecordingOptionsPresets.HIGH_QUALITY
@@ -181,13 +217,21 @@ export function AddTransactionScreen({ navigation, route }: Props) {
       Alert.alert('Select person', t.selectPersonAlert);
       return;
     }
+    // Validate date format (YYYY-MM-DD) and that it is a real calendar date
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date) || isNaN(new Date(date).getTime())) {
+      Alert.alert('Invalid date', 'Please enter a valid date in YYYY-MM-DD format.');
+      return;
+    }
     setLoading(true);
     try {
       await addTransaction({
         personId: selectedPersonId, type: txnType, amount: parsedAmount,
         note: note.trim() || undefined, date, tag: selectedTag, attachments,
       });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Play transaction sound (withdraw for GIVE, deposit for RECEIVE)
+      playTransactionSound(txnType);
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.replace('PersonDetail', { personId: selectedPersonId });
     } catch (e: any) {
       Alert.alert(t.error, e.message);
