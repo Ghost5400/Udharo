@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Udharo",
-    "owner": "aditya_gothe",
+    "owner": "chakravyuha",
     "slug": "udharo",
     "version": "1.0.0",
     "description": "Simple offline-first money tracking app for friends, families, and shopkeepers",
@@ -84,7 +84,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "389a6b7a-eaa6-4eb3-ae56-747bb4b95670"
+        "projectId": "090ea6f7-387a-46e1-8e0f-5c032d1a9970"
       }
     }
   }
