@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Udharo",
+    "owner": "aditya_gothe",
     "slug": "udharo",
     "version": "1.0.0",
     "description": "Simple offline-first money tracking app for friends, families, and shopkeepers",
@@ -41,7 +42,11 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
         "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT"
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION"
       ],
       "edgeToEdgeEnabled": true
     },
@@ -79,7 +84,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "udharo-app"
+        "projectId": "389a6b7a-eaa6-4eb3-ae56-747bb4b95670"
       }
     }
   }
