@@ -17,15 +17,16 @@
     "@react-navigation/native": "^7.2.2",
     "@react-navigation/native-stack": "^7.14.10",
     "@types/uuid": "^10.0.0",
-    "expo": "^55.0.14",
-    "expo-av": "^16.0.8",
+    "expo": "~55.0.15",
+    "expo-av": "~16.0.8",
     "expo-document-picker": "~55.0.13",
     "expo-file-system": "~55.0.16",
+    "expo-font": "~55.0.6",
     "expo-haptics": "~55.0.14",
     "expo-image-picker": "~55.0.18",
     "expo-local-authentication": "~55.0.13",
     "expo-media-library": "~55.0.14",
-    "expo-notifications": "~55.0.18",
+    "expo-notifications": "~55.0.19",
     "expo-sharing": "~55.0.18",
     "expo-sqlite": "~55.0.15",
     "expo-status-bar": "~55.0.5",
@@ -35,6 +36,7 @@
     "react-native-gesture-handler": "~2.30.0",
     "react-native-get-random-values": "~1.11.0",
     "react-native-reanimated": "4.2.1",
+    "react-native-worklets": "~0.7.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.23.0",
     "react-native-web": "^0.21.0",
@@ -45,5 +47,12 @@
     "@types/react": "~19.2.10",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["expo-av"]
+      }
+    }
+  }
 }

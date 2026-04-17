@@ -10,7 +10,7 @@ import { BorderRadius, Shadow } from '../../constants/theme';
 import { usePeopleStore } from '../../store';
 import { checkDuplicateName } from '../../database/peopleRepository';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -31,16 +31,16 @@ export function AddPersonScreen({ navigation, route }: Props) {
   const persistPhoto = async (tempUri: string): Promise<string> => {
     // FileSystem is not available on web — return the original URI as-is
     if (Platform.OS === 'web') return tempUri;
-    const fsDocDir: string = (FileSystem as any).documentDirectory ?? '';
+    const fsDocDir: string = FileSystem.documentDirectory ?? '';
     const photoDir = `${fsDocDir}people_photos/`;
-    const dirInfo = await (FileSystem as any).getInfoAsync(photoDir);
+    const dirInfo = await FileSystem.getInfoAsync(photoDir);
     if (!dirInfo.exists) {
-      await (FileSystem as any).makeDirectoryAsync(photoDir, { intermediates: true });
+      await FileSystem.makeDirectoryAsync(photoDir, { intermediates: true });
     }
     const ext = tempUri.split('.').pop()?.split('?')[0] ?? 'jpg';
     const filename = `person_${Date.now()}.${ext}`;
     const destUri = `${photoDir}${filename}`;
-    await (FileSystem as any).copyAsync({ from: tempUri, to: destUri });
+    await FileSystem.copyAsync({ from: tempUri, to: destUri });
     return destUri;
   };
 

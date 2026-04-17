@@ -10,7 +10,7 @@ import { BorderRadius, Shadow } from '../../constants/theme';
 import { useTransactionsStore, usePeopleStore } from '../../store';
 import { todayISO } from '../../utils/helpers';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import * as Haptics from 'expo-haptics';
 // expo-av is used for both voice recording AND sound playback on native
@@ -58,17 +58,17 @@ const QUICK_AMOUNTS = [100, 500, 1000, 5000];
 async function persistFile(tempUri: string, folder: string, prefix: string): Promise<string> {
   // FileSystem is not available on web — return the original URI unchanged
   if (Platform.OS === 'web') return tempUri;
-  const docDir: string = (FileSystem as any).documentDirectory ?? '';
+  const docDir: string = FileSystem.documentDirectory ?? '';
   const dir = `${docDir}${folder}/`;
-  const dirInfo = await (FileSystem as any).getInfoAsync(dir);
+  const dirInfo = await FileSystem.getInfoAsync(dir);
   if (!dirInfo.exists) {
-    await (FileSystem as any).makeDirectoryAsync(dir, { intermediates: true });
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
   }
   const ext = tempUri.split('.').pop()?.split('?')[0] ?? 'jpg';
   const filename = `${prefix}_${Date.now()}.${ext}`;
   const destUri = `${dir}${filename}`;
   try {
-    await (FileSystem as any).copyAsync({ from: tempUri, to: destUri });
+    await FileSystem.copyAsync({ from: tempUri, to: destUri });
     return destUri;
   } catch {
     return tempUri;
@@ -229,9 +229,12 @@ export function AddTransactionScreen({ navigation, route }: Props) {
         personId: selectedPersonId, type: txnType, amount: parsedAmount,
         note: note.trim() || undefined, date, tag: selectedTag, attachments,
       });
-      // Play transaction sound (withdraw for GIVE, deposit for RECEIVE)
-      playTransactionSound(txnType);
+      // Play transaction sound BEFORE navigating — awaiting ensures the sound
+      // object is created and starts playing before the component unmounts.
+      await playTransactionSound(txnType);
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Small buffer so the sound has time to begin before the screen unmounts
+      await new Promise(r => setTimeout(r, 350));
       navigation.replace('PersonDetail', { personId: selectedPersonId });
     } catch (e: any) {
       Alert.alert(t.error, e.message);
@@ -264,14 +267,14 @@ export function AddTransactionScreen({ navigation, route }: Props) {
         <View style={[styles.typeToggle, { backgroundColor: C.surfaceContainerLow }]}>
           <TouchableOpacity
             style={[styles.typeBtn, isGive && { backgroundColor: C.given }]}
-            onPress={() => { setTxnType('GIVE'); Haptics.selectionAsync(); }}
+            onPress={() => { setTxnType('GIVE'); if (Platform.OS !== 'web') Haptics.selectionAsync(); }}
           >
             <MaterialIcons name="north-east" size={18} color={isGive ? '#fff' : C.onSurfaceVariant} />
             <Text style={[styles.typeBtnLabel, { color: isGive ? '#fff' : C.onSurfaceVariant }]}>{t.give}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.typeBtn, !isGive && { backgroundColor: C.received }]}
-            onPress={() => { setTxnType('RECEIVE'); Haptics.selectionAsync(); }}
+            onPress={() => { setTxnType('RECEIVE'); if (Platform.OS !== 'web') Haptics.selectionAsync(); }}
           >
             <MaterialIcons name="south-west" size={18} color={!isGive ? '#fff' : C.onSurfaceVariant} />
             <Text style={[styles.typeBtnLabel, { color: !isGive ? '#fff' : C.onSurfaceVariant }]}>{t.receive}</Text>

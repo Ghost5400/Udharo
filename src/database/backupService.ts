@@ -1,10 +1,9 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getDatabase } from './schema';
 import { setLastBackupAt } from './settingsRepository';
 
-// SDK 55: documentDirectory is on the module directly
-const docDir: string = (FileSystem as any).documentDirectory ?? '';
+const docDir: string = FileSystem.documentDirectory ?? '';
 
 interface BackupData {
   version: number;
@@ -39,15 +38,15 @@ export async function exportBackup(): Promise<string> {
   };
 
   const backupDir = `${docDir}backups/`;
-  const dirInfo = await (FileSystem as any).getInfoAsync(backupDir);
+  const dirInfo = await FileSystem.getInfoAsync(backupDir);
   if (!dirInfo.exists) {
-    await (FileSystem as any).makeDirectoryAsync(backupDir, { intermediates: true });
+    await FileSystem.makeDirectoryAsync(backupDir, { intermediates: true });
   }
 
   const filename = `udharo_backup_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`;
   const fileUri = `${backupDir}${filename}`;
 
-  await (FileSystem as any).writeAsStringAsync(fileUri, JSON.stringify(backup, null, 2));
+  await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(backup, null, 2));
 
   await setLastBackupAt(new Date().toISOString());
 
@@ -70,7 +69,7 @@ export async function shareBackup(): Promise<void> {
 
 // ─── Import / Restore Backup ──────────────────────────────────────────────────
 export async function importBackup(fileUri: string): Promise<void> {
-  const content = await (FileSystem as any).readAsStringAsync(fileUri);
+  const content = await FileSystem.readAsStringAsync(fileUri);
 
   const backup: BackupData = JSON.parse(content);
 

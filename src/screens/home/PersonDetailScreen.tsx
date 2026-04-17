@@ -15,7 +15,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { ThemeColors, DarkColors } from '../../constants/colors';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Linking } from 'react-native';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'PersonDetail'>;
@@ -84,9 +84,9 @@ export function PersonDetailScreen({ navigation, route }: Props) {
         text += `${txn.date} | ${txn.type} | ${formatCurrency(txn.amount)} | ${txn.note ?? 'No note'}\n`;
       }
       
-      const docDir: string = (FileSystem as any).documentDirectory ?? '';
+      const docDir: string = FileSystem.documentDirectory ?? '';
       const fileUri = `${docDir}${person?.name}_ledger.txt`;
-      await (FileSystem as any).writeAsStringAsync(fileUri, text);
+      await FileSystem.writeAsStringAsync(fileUri, text);
       
       const isAvailable = await Sharing.isAvailableAsync();
       if (isAvailable) {

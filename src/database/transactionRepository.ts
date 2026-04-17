@@ -7,7 +7,7 @@ import {
   AttachmentInput,
   TransactionGroup,
 } from '../types';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
@@ -126,7 +126,7 @@ async function saveAttachment(db: any, transactionId: string, att: AttachmentInp
   let finalUri = att.fileUri;
   if (Platform.OS !== 'web') {
     try {
-      const proofDir = `${(FileSystem as any).documentDirectory}proof/`;
+      const proofDir = `${FileSystem.documentDirectory}proof/`;
       const dirInfo = await FileSystem.getInfoAsync(proofDir);
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(proofDir, { intermediates: true });

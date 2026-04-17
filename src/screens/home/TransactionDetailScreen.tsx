@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, Alert, Image, Dimensions, Platform
@@ -13,6 +13,8 @@ import { formatCurrency, formatDate } from '../../utils/helpers';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../context/ThemeContext';
+// expo-av Audio — native only (web does not support local file playback)
+const AudioModule = Platform.OS !== 'web' ? require('expo-av').Audio : null;
 
 const { width } = Dimensions.get('window');
 type Props = NativeStackScreenProps<HomeStackParamList, 'TransactionDetail'>;
@@ -27,6 +29,9 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
+  // Voice note playback state
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const soundRef = useRef<any>(null);
 
   useEffect(() => {
     loadData();
@@ -44,6 +49,67 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
       // Non-fatal: transaction or attachments failed to load
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Stop + unload any playing audio when screen unmounts
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.stopAsync().catch(() => {});
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+    };
+  }, []);
+
+  const handlePlayAudio = async (att: Attachment) => {
+    if ((Platform.OS as string) === 'web') {
+      Alert.alert('Not supported', 'Audio playback is not available on web.');
+      return;
+    }
+    // If this note is already playing — stop it
+    if (playingAudioId === att.id) {
+      try {
+        await soundRef.current?.stopAsync();
+        await soundRef.current?.unloadAsync();
+      } catch { /* non-fatal */ }
+      soundRef.current = null;
+      setPlayingAudioId(null);
+      return;
+    }
+    // Stop any currently playing sound first
+    if (soundRef.current) {
+      try {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+      } catch { /* non-fatal */ }
+      soundRef.current = null;
+      setPlayingAudioId(null);
+    }
+    try {
+      await AudioModule.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: false,
+      });
+      const { sound } = await AudioModule.Sound.createAsync(
+        { uri: att.fileUri },
+        { shouldPlay: true, volume: 1.0 }
+      );
+      soundRef.current = sound;
+      setPlayingAudioId(att.id);
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      sound.setOnPlaybackStatusUpdate((status: any) => {
+        if (status.didJustFinish || !status.isLoaded) {
+          sound.unloadAsync().catch(() => {});
+          soundRef.current = null;
+          setPlayingAudioId(null);
+        }
+      });
+    } catch (e: any) {
+      Alert.alert('Playback Error', e.message ?? 'Could not play audio.');
+      setPlayingAudioId(null);
     }
   };
 
@@ -176,10 +242,23 @@ export function TransactionDetailScreen({ navigation, route }: Props) {
                   {att.type === 'IMAGE' ? (
                     <Image source={{ uri: att.fileUri }} style={styles.attachmentImage} />
                   ) : (
-                    <View style={styles.attachmentOther}>
-                      <MaterialIcons name="mic" size={32} color={C.primary} />
-                      <Text style={[styles.attachmentText, { color: C.primary }]}>Voice Note</Text>
-                    </View>
+                    // Voice note — tappable play/stop button
+                    <TouchableOpacity
+                      style={styles.attachmentOther}
+                      onPress={() => handlePlayAudio(att)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={[styles.playIcon, { backgroundColor: playingAudioId === att.id ? `${C.error}18` : `${C.primary}15` }]}>
+                        <MaterialIcons
+                          name={playingAudioId === att.id ? 'stop' : 'play-arrow'}
+                          size={36}
+                          color={playingAudioId === att.id ? C.error : C.primary}
+                        />
+                      </View>
+                      <Text style={[styles.attachmentText, { color: playingAudioId === att.id ? C.error : C.primary }]}>
+                        {playingAudioId === att.id ? 'Tap to Stop' : 'Voice Note'}
+                      </Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               ))}
@@ -250,6 +329,7 @@ function makeStyles(C: ThemeColors) {
     },
     attachmentImage: { width: '100%', height: '100%', resizeMode: 'cover' },
     attachmentOther: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    playIcon: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
     attachmentText: { fontSize: 12, fontWeight: '600' },
 
     bottomArea: {
